@@ -3,7 +3,7 @@ CXX = g++
 linux:
 	$(CC) -std=c99  dae2mdlx.c -o dae2mdlx
 clean:
-	rm -rf *.kh2v *.o *.dsm *.exe dae2mdlx
+	rm -rf *.kh2v *.kh2m *.o *.dsm *.exe dae2mdlx
 windows:
 	$(WCC) -std=c99  dae2mdlx.c -o dae2mdlx.exe
 
