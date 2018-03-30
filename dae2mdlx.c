@@ -213,7 +213,6 @@ int main(int argc, char* argv[]){
         int off_dma = ftell(mdl);
         // 910
         char end_dma[] = {0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00};
-        fwrite(end_dma , 1 , sizeof(end_dma) , mdl);
         unsigned short qwc_len=128;
         unsigned short qwc_mat_len=4;
         unsigned short res_unk = 0x3000;
