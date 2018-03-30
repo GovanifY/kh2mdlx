@@ -243,11 +243,11 @@ int main(int argc, char* argv[]){
         
         // fixing header offsets
         fseek(mdl, off_head, SEEK_SET);
-        head->bone_off=off_bone + 0x90;
+        head->bone_off=off_bone - 0x90;
         fwrite(head , 1 , sizeof(struct mdl_header) , mdl);
         fseek(mdl, off_subh, SEEK_SET);
-        subh->DMA_off=off_dma + 0x90;
-        subh->mat_off=off_mat + 0x90;
+        subh->DMA_off=off_dma - 0x90;
+        subh->mat_off=off_mat - 0x90;
         fwrite(subh , 1 , sizeof(struct mdl_subpart_header) , mdl);
 
 		fclose(mdl);
