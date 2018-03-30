@@ -111,11 +111,11 @@ struct mdl_header {
     unsigned short unk1;
     unsigned int bone_off;
     unsigned int unk2;
-    unsigned short mdl_part_cnt; 
+    unsigned short mdl_subpart_cnt; 
     unsigned short unk3; 
 };
 
-struct mdl_part_header {
+struct mdl_subpart_header {
     unsigned int unk1;
     unsigned int texture_idx;
     unsigned int unk2;
@@ -167,8 +167,25 @@ int main(int argc, char* argv[]){
         // write kh2 dma in-game header
 		for (int i=0; i<0x90;i++){fwrite(empty , 1 , sizeof(empty) , mdl);}
 
-        fwrite(&(int 3),sizeof(int),1, mdl);
+        struct mdl_header *head=malloc(sizeof(struct mdl_header));
+        struct mdl_subpart_header *subh=malloc(sizeof(struct mdl_subpart_header));
+        mdl_header->nmb=3;
+        mdl_header->bone_cnt=1;
+        mdl_header->mdl_subpart_cnt=1;
 
+        struct bone_entry *bone=malloc(sizeof(struct bone_entry));
+        bone->idx=1;
+        bone->parent=-1;
+        bone->sca_x=1.0;
+        bone->sca_y=1.0;
+        bone->sca_z=1.0;
+        bone->rot_x=1.0;
+        bone->rot_y=1.0;
+        bone->rot_z=1.0;
+        bone->trans_x=1.0;
+        bone->trans_y=1.0;
+        bone->trans_z=1.0;
+        // todo: create a test DMA struct, mat, update offset 
 
 		fclose(mdl);
 }
