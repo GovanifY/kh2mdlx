@@ -200,6 +200,14 @@ int main(int argc, char* argv[]){
         //FILE * dummy_vif = fopen("geosphere.kh2v", "rb");
 
 
+
+        fseek(dummy_vif, 0x24, SEEK_SET);
+        char mat_vif_off;
+        fread(&mat_vif_off, 4, 1, dummy_vif);
+        fseek(dummy_vif, 0x0, SEEK_END);
+        unsigned short vifpkt_len = ftell(dummy_vif)/16;
+        fseek(dummy_vif, 0x0, SEEK_SET);
+
         int off_vif = ftell(mdl) - 0x90;
 
         size_t n, m;
@@ -214,24 +222,22 @@ int main(int argc, char* argv[]){
         int off_dma = ftell(mdl);
         // 910
         char end_dma[] = {0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00};
-        unsigned short qwc_len=15;
         unsigned short qwc_mat_len=4;
         unsigned short res_unk = 0x3000;
         unsigned int vif_off=0x0;
-        fwrite(&qwc_len , 1 , sizeof(qwc_len) , mdl);
+        fwrite(&vifpkt_len , 1 , sizeof(vifpkt_len) , mdl);
         fwrite(&res_unk , 1 , sizeof(res_unk) , mdl);
         fwrite(&off_vif , 1 , sizeof(off_vif) , mdl);
 		for (int i=0; i<8;i++){fwrite(empty , 1 , sizeof(empty) , mdl);}
-        fwrite(&qwc_mat_len , 1 , sizeof(qwc_len) , mdl);
+        fwrite(&qwc_mat_len , 1 , sizeof(qwc_mat_len) , mdl);
         fwrite(&res_unk , 1 , sizeof(res_unk) , mdl);
 		for (int i=0; i<4;i++){fwrite(empty , 1 , sizeof(empty) , mdl);}
         char stcycl[] = {0x01, 0x01, 0x00, 0x01}; // stcycl 1,1
         fwrite(stcycl , 1 , sizeof(stcycl) , mdl);
-        // dma writes after vif, in that case 307
-        char qwc_vif_len[] = {11};
+        
         char unpack[] = {0x80, 0x04, 0x6c}; // unpack V4_32
         unsigned short unpack_end=0x6c04;
-        fwrite(qwc_vif_len , 1 , sizeof(qwc_vif_len) , mdl);
+        fwrite(&mat_vif_off , 1 , sizeof(mat_vif_off) , mdl);
         fwrite(unpack , 1 , sizeof(unpack) , mdl);
         fwrite(end_dma , 1 , sizeof(end_dma) , mdl);
 
