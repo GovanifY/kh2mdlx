@@ -195,11 +195,8 @@ int main(int argc, char* argv[]){
         bone->trans_z=1.0;
         fwrite(bone , 1 , sizeof(struct bone_entry) , mdl);
 
-        //FILE * dummy_vif = fopen("fish.kh2v", "rb");
-        FILE * dummy_vif = fopen("triangle.kh2v", "rb");
-        //FILE * dummy_vif = fopen("geosphere.kh2v", "rb");
-
-
+        // we do not have a dae parser yet so we take vif packets directly
+        FILE * dummy_vif = fopen(argv[1], "rb");
 
         fseek(dummy_vif, 0x24, SEEK_SET);
         char mat_vif_off;
@@ -257,6 +254,7 @@ int main(int argc, char* argv[]){
         fwrite(subh , 1 , sizeof(struct mdl_subpart_header) , mdl);
 
 		fclose(mdl);
+        fclose(dummy_vif);
 }
 
 
