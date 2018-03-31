@@ -111,7 +111,7 @@ struct mdl_header {
     unsigned short bone_cnt;
     unsigned short unk1;
     unsigned int bone_off;
-    unsigned int unk_off;;
+    unsigned int unk_off;
     unsigned short mdl_subpart_cnt; 
     unsigned short unk3; 
 };
@@ -195,7 +195,9 @@ int main(int argc, char* argv[]){
         bone->trans_z=1.0;
         fwrite(bone , 1 , sizeof(struct bone_entry) , mdl);
 
-        FILE * dummy_vif = fopen("fish.kh2v", "rb");
+        //FILE * dummy_vif = fopen("fish.kh2v", "rb");
+        FILE * dummy_vif = fopen("triangle.kh2v", "rb");
+        //FILE * dummy_vif = fopen("geosphere.kh2v", "rb");
 
 
         int off_vif = ftell(mdl) - 0x90;
@@ -212,7 +214,7 @@ int main(int argc, char* argv[]){
         int off_dma = ftell(mdl);
         // 910
         char end_dma[] = {0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00};
-        unsigned short qwc_len=113;
+        unsigned short qwc_len=15;
         unsigned short qwc_mat_len=4;
         unsigned short res_unk = 0x3000;
         unsigned int vif_off=0x0;
@@ -226,7 +228,7 @@ int main(int argc, char* argv[]){
         char stcycl[] = {0x01, 0x01, 0x00, 0x01}; // stcycl 1,1
         fwrite(stcycl , 1 , sizeof(stcycl) , mdl);
         // dma writes after vif, in that case 307
-        char qwc_vif_len[] = {185};
+        char qwc_vif_len[] = {11};
         char unpack[] = {0x80, 0x04, 0x6c}; // unpack V4_32
         unsigned short unpack_end=0x6c04;
         fwrite(qwc_vif_len , 1 , sizeof(qwc_vif_len) , mdl);
