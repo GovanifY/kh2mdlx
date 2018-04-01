@@ -221,7 +221,7 @@ int main(int argc, char* argv[]){
         char end_dma[] = {0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00};
         unsigned short qwc_mat_len=4;
         unsigned short res_unk = 0x3000;
-        unsigned int mat_idx = 0x11;
+        unsigned int mat_idx = 0x0;
         unsigned int vif_off=0x0;
         fwrite(&vifpkt_len , 1 , sizeof(vifpkt_len) , mdl);
         fwrite(&res_unk , 1 , sizeof(res_unk) , mdl);
@@ -242,7 +242,7 @@ int main(int argc, char* argv[]){
         
 
         int off_mat = ftell(mdl);
-        unsigned int mat_dummy[] = { 0x01, 0x11, 0x0, 0x0 };
+        unsigned int mat_dummy[] = { 0x01, 0x00, 0x0, 0x0 };
         fwrite(mat_dummy , 1 , sizeof(mat_dummy) , mdl);
         
         // fixing header offsets
