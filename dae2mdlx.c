@@ -241,7 +241,7 @@ int main(int argc, char* argv[]){
         
 
         int off_mat = ftell(mdl);
-        unsigned int mat_dummy[] = { 0x01, 0x0, 0x0, 0x0 };
+        unsigned int mat_dummy[] = { 0x01, 0x11, 0x0, 0x0 };
         fwrite(mat_dummy , 1 , sizeof(mat_dummy) , mdl);
         
         // fixing header offsets
