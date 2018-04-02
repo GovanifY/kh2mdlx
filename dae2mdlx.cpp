@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <assimp/cimport.h>       
+#include <assimp/scene.h>         
+#include <assimp/postprocess.h>   
 
 /*
  * Here is an high-level overview of the MDLX file format
@@ -157,18 +160,28 @@ struct DMA {
 
 int main(int argc, char* argv[]){
 	printf("dae2mdlx\n--- Early rev, don't blame me if it eats your cat\n\n");
-	if(argc<2){printf("usage: dae2mdlx model.dae"); return -1;}
+	if(argc<3){printf("usage: dae2mdlx test.kh2v model.dae"); return -1;}
 
 		FILE *mdl;
         char empty[] = {0x00};
 
 		mdl=fopen("test.kh2m","wb");
 
+        const aiScene* scene = aiImportFile( argv[2],
+                                             aiProcess_Triangulate            |
+                                             aiProcess_JoinIdenticalVertices  |
+                                             aiProcess_SortByPType);
+        if( !scene)
+        {
+            printf("error loading model!: %s", aiGetErrorString());
+            return -1;
+        }
+
         // write kh2 dma in-game header
 		for (int i=0; i<0x90;i++){fwrite(empty , 1 , sizeof(empty) , mdl);}
 
-        struct mdl_header *head=malloc(sizeof(struct mdl_header));
-        struct mdl_subpart_header *subh=malloc(sizeof(struct mdl_subpart_header));
+        struct mdl_header *head=(mdl_header *)malloc(sizeof(struct mdl_header));
+        struct mdl_subpart_header *subh=(mdl_subpart_header *)malloc(sizeof(struct mdl_subpart_header));
         head->nmb=3;
         head->bone_cnt=1;
         head->mdl_subpart_cnt=1;
@@ -181,7 +194,7 @@ int main(int argc, char* argv[]){
 
 
         int off_bone = ftell(mdl);
-        struct bone_entry *bone=malloc(sizeof(struct bone_entry));
+        struct bone_entry *bone=(bone_entry *)malloc(sizeof(struct bone_entry));
         bone->idx=0;
         bone->parent=-1;
         bone->sca_x=1.0;
@@ -230,10 +243,10 @@ int main(int argc, char* argv[]){
         fwrite(&qwc_mat_len , 1 , sizeof(qwc_mat_len) , mdl);
         fwrite(&res_unk , 1 , sizeof(res_unk) , mdl);
         fwrite(&mat_idx , 1 , sizeof(mat_idx) , mdl);
-        char stcycl[] = {0x01, 0x01, 0x00, 0x01}; // stcycl 1,1
+        unsigned char stcycl[] = {0x01, 0x01, 0x00, 0x01}; // stcycl 1,1
         fwrite(stcycl , 1 , sizeof(stcycl) , mdl);
         
-        char unpack[] = {0x80, 0x04, 0x6c}; // unpack V4_32
+        unsigned char unpack[] = {0x80, 0x04, 0x6c}; // unpack V4_32
         unsigned short unpack_end=0x6c04;
         fwrite(&mat_vif_off , 1 , sizeof(mat_vif_off) , mdl);
         fwrite(unpack , 1 , sizeof(unpack) , mdl);
