@@ -159,6 +159,27 @@ struct DMA {
     unsigned int vif_inst2;
 };
 
+void get_faces(const aiMesh& mesh, FILE* pkt, char* faces_drawn, int* vert_new_order, int vertcount){
+                            printf("~~~~~~~~~~\n");
+                        for(int y=0; y<mesh.mNumFaces; y++){
+                            printf("  Face: %d, 1: %d, 2: %d, 3: %d\n  NewFace: 1: %d, 2: %d, 3: %d\n", y+1, mesh.mFaces[y].mIndices[0], mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2], vert_new_order[mesh.mFaces[y].mIndices[0]],vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]);
+                            // if we have all the vertices necessary for this face
+                            if(vert_new_order[mesh.mFaces[y].mIndices[0]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[1]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[2]]!=0 && faces_drawn[y]!=1){
+                                  fprintf(pkt, "f %d %d %d\n", vert_new_order[mesh.mFaces[y].mIndices[0]],vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]);
+                                  faces_drawn[y]=1;
+                            }
+                            // if we have written all the vertices already, but not all
+                            // vertices are present in this packet for the remaining
+                            // faces
+                            if(vertcount==mesh.mNumBones && faces_drawn[y]!=1){
+                                printf("TODO: FACE NOT DRAWN TO FIX DEBUG\n");
+                            }
+
+                    }
+
+                    }
+                    
+
 int main(int argc, char* argv[]){
 	printf("dae2mdlx\n--- Early rev, don't blame me if it eats your cat\n\n");
 	if(argc<3){printf("usage: dae2mdlx test.kh2v model.dae"); return -1;}
@@ -186,43 +207,48 @@ int main(int argc, char* argv[]){
         unsigned int mesh_nmb= scene->mNumMeshes;
         printf("Number of meshes: %d\n", mesh_nmb);
         for(int i=0; i<mesh_nmb;i++){
-            int vifpkt=0;
+            int vifpkt=1;
             int vertcount=0;
+            int max_verts=70;
             const aiMesh& mesh = *scene->mMeshes[i];
             int vert_new_order[mesh.mNumVertices];
-            // should be enough chars for a lifetime
-            char *filename = (char*)malloc(1024*sizeof(char));
-            strcat(filename, argv[2]);
-            strcat(filename, "_");
-            sprintf(filename, "%d", vifpkt);
+            char faces_drawn[mesh.mNumFaces];
+            FILE *pkt;
             
             // we are writing a custom interlaced, bone-supporting obj here,
             // don't assume everything is following the obj standard! 
-            FILE *pkt=fopen(filename, "w");
             while(vertcount<mesh.mNumVertices){
 
-
+                // should be enough chars for a lifetime
+                char *filename = (char*)malloc(1024*sizeof(char));
+                strcat(filename, argv[2]);
+                strcat(filename, "_");
+                sprintf(filename, "%d", vifpkt);
+                // pkt=fopen(filename, "a");
                 for(int y=0; y<mesh.mNumBones; y++){
                     printf("  Bone: %d, Affecting %d vertices\n", y+1, mesh.mBones[y]->mNumWeights); 
                     fprintf(pkt, "vb %d\n", mesh.mBones[y]->mNumWeights);
-                    for(int z=0; z<mesh.mBones[y]->mNumWeights;z++){
-                        printf("    Vertex %d transformed as vertex %d\n", mesh.mBones[y]->mWeights[z].mVertexId, vertcount+1);
-                        vert_new_order[mesh.mBones[y]->mWeights[z].mVertexId]=vertcount+1;
-                        vertcount++;
-                        fprintf(pkt, "v %f %f %f\n", mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].x,mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].y,mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].z);
-                        fprintf(pkt, "vt %f %f\n", mesh.mTextureCoords[0][mesh.mBones[y]->mWeights[z].mVertexId].x, mesh.mTextureCoords[0][mesh.mBones[y]->mWeights[z].mVertexId].y);
-                    }
+                    if(((vertcount+mesh.mBones[y]->mNumWeights)/vifpkt)<max_verts){
+                        for(int z=0; z<mesh.mBones[y]->mNumWeights;z++){
+                            printf("    Vertex %d transformed as vertex %d\n", mesh.mBones[y]->mWeights[z].mVertexId, vertcount+1);
+                            vert_new_order[mesh.mBones[y]->mWeights[z].mVertexId]=vertcount+1;
+                            vertcount++;
+                            fprintf(pkt, "v %f %f %f\n", mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].x,mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].y,mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].z);
+                            fprintf(pkt, "vt %f %f\n", mesh.mTextureCoords[0][mesh.mBones[y]->mWeights[z].mVertexId].x, mesh.mTextureCoords[0][mesh.mBones[y]->mWeights[z].mVertexId].y);
+                            // we update possible faces at each vertex read
+                            get_faces(mesh,pkt,faces_drawn,vert_new_order,vertcount);
+                        }
                     
                   }
-                printf("~~~~~~~~~~\n");
-                for(int y=0; y<mesh.mNumFaces; y++){
-                    printf("  Face: %d, 1: %d, 2: %d, 3: %d\n  NewFace: 1: %d, 2: %d, 3: %d\n", y+1, mesh.mFaces[y].mIndices[0], mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2], vert_new_order[mesh.mFaces[y].mIndices[0]],vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]); 
-                    // if we have all the vertices necessary for this face
-                    if(vert_new_order[mesh.mFaces[y].mIndices[0]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[1]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[2]]!=0){
-                          fprintf(pkt, "f %d %d %d\n", vert_new_order[mesh.mFaces[y].mIndices[0]],vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]);
-                    }
+                  else{
+                    // if we are over the number of vertices make a new packet
+                    // TODO: vertcount shouldn't be 0 as get_faces verifies it
+                    // against the total number of vertices, make 2 counters...?
+                    // also we need to clear faces_drawn for faces which only
+                    // have one or so vertex
+                        y--; vifpkt++; }
+                  fclose(pkt);
 
-            }
             /*printf("Mesh: %d, number of vertices: %d, number of bones: %d\n", i+1, mesh.mNumVertices, mesh.mNumBones);
             for(int y=0; y<mesh.mNumVertices;y++){
                 printf("  Vertex: %d, x: %f, y: %f, z: %f\n", y+1, mesh.mVertices[y].x, mesh.mVertices[y].y, mesh.mVertices[y].z); 
@@ -232,6 +258,7 @@ int main(int argc, char* argv[]){
             printf("~~~~~~~~~~\n");*/
 
             }
+        }
         }
 
         // write kh2 dma in-game header
