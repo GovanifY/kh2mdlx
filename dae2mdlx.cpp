@@ -208,6 +208,7 @@ int main(int argc, char* argv[]){
                         fprintf(pkt, "vt %f %f\n", mesh.mTextureCoords[0][mesh.mBones[y]->mWeights[z].mVertexId].x, mesh.mTextureCoords[0][mesh.mBones[y]->mWeights[z].mVertexId].y);
                     }
                     
+                  }
                 printf("~~~~~~~~~~\n");
                 for(int y=0; y<mesh.mNumFaces; y++){
                     printf("  Face: %d, 1: %d, 2: %d, 3: %d\n", y+1, mesh.mFaces[y].mIndices[0], mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2]); 
@@ -224,7 +225,6 @@ int main(int argc, char* argv[]){
             }
             
             printf("~~~~~~~~~~\n");*/
-                  }
 
             }
         }
