@@ -181,22 +181,51 @@ int main(int argc, char* argv[]){
         unsigned int mesh_nmb= scene->mNumMeshes;
         printf("Number of meshes: %d\n", mesh_nmb);
         for(int i=0; i<mesh_nmb;i++){
+            int vifpkt=0;
+            int vertcount=0;
             const aiMesh& mesh = *scene->mMeshes[i];
-            printf("Mesh: %d, number of vertices: %d, number of bones: %d\n", i+1, mesh.mNumVertices, mesh.mNumBones);
+            int vert_new_order[mesh.mNumVertices];
+            // should be enough chars for a lifetime
+            char *filename = (char*)malloc(1024*sizeof(char));
+            strcat(filename, argv[2]);
+            strcat(filename, "_");
+            sprintf(filename, "%d", vifpkt);
+            
+            // we are writing a custom interlaced, bone-supporting obj here,
+            // don't assume everything is following the obj standard! 
+            FILE *pkt=fopen(filename, "w");
+            while(vertcount<mesh.mNumVertices){
+
+
+                for(int y=0; y<mesh.mNumBones; y++){
+                    printf("  Bone: %d, Affecting %d vertices\n", y+1, mesh.mBones[y]->mNumWeights); 
+                    fprintf(pkt, "vb %d\n", mesh.mBones[y]->mNumWeights);
+                    for(int z=0; z<mesh.mBones[y]->mNumWeights;z++){
+                        printf("    Vertex %d\n", mesh.mBones[y]->mWeights[z].mVertexId);
+                        vert_new_order[vertcount]=mesh.mBones[y]->mWeights[z].mVertexId+1;
+                        vertcount++;
+                        fprintf(pkt, "v %f %f %f\n", mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].x,mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].y,mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].z);
+                        fprintf(pkt, "vt %f %f\n", mesh.mTextureCoords[0][mesh.mBones[y]->mWeights[z].mVertexId].x, mesh.mTextureCoords[0][mesh.mBones[y]->mWeights[z].mVertexId].y);
+                    }
+                    
+                printf("~~~~~~~~~~\n");
+                for(int y=0; y<mesh.mNumFaces; y++){
+                    printf("  Face: %d, 1: %d, 2: %d, 3: %d\n", y+1, mesh.mFaces[y].mIndices[0], mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2]); 
+                    // if we have all the vertices necessary for this face
+                    if(vert_new_order[mesh.mFaces[y].mIndices[0]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[1]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[2]]!=0){
+                        fprintf(pkt, "f %d %d %d\n", vert_new_order[mesh.mFaces[y].mIndices[0]], vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]);
+                    }
+
+            }
+            /*printf("Mesh: %d, number of vertices: %d, number of bones: %d\n", i+1, mesh.mNumVertices, mesh.mNumBones);
             for(int y=0; y<mesh.mNumVertices;y++){
                 printf("  Vertex: %d, x: %f, y: %f, z: %f\n", y+1, mesh.mVertices[y].x, mesh.mVertices[y].y, mesh.mVertices[y].z); 
                 printf("  UV: %d, x: %f, y: %f\n", y+1, mesh.mTextureCoords[0][y].x, mesh.mTextureCoords[0][y].y); 
             }
-            printf("~~~~~~~~~~\n");
-            for(int y=0; y<mesh.mNumFaces; y++){
-                printf("  Face: %d, 1: %d, 2: %d, 3: %d\n", y+1, mesh.mFaces[y].mIndices[0], mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2]); 
-            }
-            printf("~~~~~~~~~~\n");
-            for(int y=0; y<mesh.mNumBones; y++){
-                printf("  Bone: %d, Affecting %d vertices\n", y+1, mesh.mBones[y]->mNumWeights); 
-                for(int z=0; z<mesh.mBones[y]->mNumWeights;z++){
-                    printf("    Vertex %d\n", mesh.mBones[y]->mWeights[z]);
-                }
+            
+            printf("~~~~~~~~~~\n");*/
+                  }
+
             }
         }
 
