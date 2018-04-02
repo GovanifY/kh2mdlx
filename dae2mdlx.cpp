@@ -182,7 +182,22 @@ int main(int argc, char* argv[]){
         printf("Number of meshes: %d\n", mesh_nmb);
         for(int i=0; i<mesh_nmb;i++){
             const aiMesh& mesh = *scene->mMeshes[i];
-            printf("Mesh: %d, number of vertices: %d\n", i+1, mesh.mNumVertices);
+            printf("Mesh: %d, number of vertices: %d, number of bones: %d\n", i+1, mesh.mNumVertices, mesh.mNumBones);
+            for(int y=0; y<mesh.mNumVertices;y++){
+                printf("  Vertex: %d, x: %f, y: %f, z: %f\n", y+1, mesh.mVertices[y].x, mesh.mVertices[y].y, mesh.mVertices[y].z); 
+                printf("  UV: %d, x: %f, y: %f\n", y+1, mesh.mTextureCoords[0][y].x, mesh.mTextureCoords[0][y].y); 
+            }
+            printf("~~~~~~~~~~\n");
+            for(int y=0; y<mesh.mNumFaces; y++){
+                printf("  Face: %d, 1: %d, 2: %d, 3: %d\n", y+1, mesh.mFaces[y].mIndices[0], mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2]); 
+            }
+            printf("~~~~~~~~~~\n");
+            for(int y=0; y<mesh.mNumBones; y++){
+                printf("  Bone: %d, Affecting %d vertices\n", y+1, mesh.mBones[y]->mNumWeights); 
+                for(int z=0; z<mesh.mBones[y]->mNumWeights;z++){
+                    printf("    Vertex %d\n", mesh.mBones[y]->mWeights[z]);
+                }
+            }
         }
 
         // write kh2 dma in-game header
