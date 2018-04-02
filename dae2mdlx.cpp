@@ -178,11 +178,11 @@ int main(int argc, char* argv[]){
             return -1;
         }
 
-        unsigned long mesh_nmb= sizeof(scene->mMeshes)/sizeof(scene->mMeshes[0]);
-        printf("Number of meshes: %lu\n", mesh_nmb);
-        for(unsigned long i=0; i<mesh_nmb;i++){
+        unsigned int mesh_nmb= scene->mNumMeshes;
+        printf("Number of meshes: %d\n", mesh_nmb);
+        for(int i=0; i<mesh_nmb;i++){
             const aiMesh& mesh = *scene->mMeshes[i];
-            printf("Mesh: %lu, number of vertices: %d\n", i+1, mesh.mNumVertices);
+            printf("Mesh: %d, number of vertices: %d\n", i+1, mesh.mNumVertices);
         }
 
         // write kh2 dma in-game header
