@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <assimp/cimport.h>       
+#include <assimp/Importer.hpp>
 #include <assimp/scene.h>         
 #include <assimp/postprocess.h>   
 
@@ -167,14 +167,22 @@ int main(int argc, char* argv[]){
 
 		mdl=fopen("test.kh2m","wb");
 
-        const aiScene* scene = aiImportFile( argv[2],
+        Assimp::Importer importer;
+        const aiScene* scene = importer.ReadFile( argv[2],
                                              aiProcess_Triangulate            |
                                              aiProcess_JoinIdenticalVertices  |
                                              aiProcess_SortByPType);
         if( !scene)
         {
-            printf("error loading model!: %s", aiGetErrorString());
+            printf("error loading model!: %s", importer.GetErrorString());
             return -1;
+        }
+
+        unsigned long mesh_nmb= sizeof(scene->mMeshes)/sizeof(scene->mMeshes[0]);
+        printf("Number of meshes: %lu\n", mesh_nmb);
+        for(unsigned long i=0; i<mesh_nmb;i++){
+            const aiMesh& mesh = *scene->mMeshes[i];
+            printf("Mesh: %lu, number of vertices: %d\n", i+1, mesh.mNumVertices);
         }
 
         // write kh2 dma in-game header
