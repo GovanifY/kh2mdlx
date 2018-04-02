@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assimp/Importer.hpp>
+#include <assimp/Exporter.hpp>
 #include <assimp/scene.h>         
 #include <assimp/postprocess.h>   
 
@@ -178,6 +179,10 @@ int main(int argc, char* argv[]){
             return -1;
         }
 
+    /*Assimp::Exporter exporter;
+    const aiExportFormatDesc* format = exporter.GetExportFormatDescription(0);
+    exporter.Export(scene, "obj", "test.obj", scene->mFlags);*/
+
         unsigned int mesh_nmb= scene->mNumMeshes;
         printf("Number of meshes: %d\n", mesh_nmb);
         for(int i=0; i<mesh_nmb;i++){
@@ -201,8 +206,8 @@ int main(int argc, char* argv[]){
                     printf("  Bone: %d, Affecting %d vertices\n", y+1, mesh.mBones[y]->mNumWeights); 
                     fprintf(pkt, "vb %d\n", mesh.mBones[y]->mNumWeights);
                     for(int z=0; z<mesh.mBones[y]->mNumWeights;z++){
-                        printf("    Vertex %d\n", mesh.mBones[y]->mWeights[z].mVertexId);
-                        vert_new_order[vertcount]=mesh.mBones[y]->mWeights[z].mVertexId+1;
+                        printf("    Vertex %d transformed as vertex %d\n", mesh.mBones[y]->mWeights[z].mVertexId, vertcount+1);
+                        vert_new_order[mesh.mBones[y]->mWeights[z].mVertexId]=vertcount+1;
                         vertcount++;
                         fprintf(pkt, "v %f %f %f\n", mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].x,mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].y,mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].z);
                         fprintf(pkt, "vt %f %f\n", mesh.mTextureCoords[0][mesh.mBones[y]->mWeights[z].mVertexId].x, mesh.mTextureCoords[0][mesh.mBones[y]->mWeights[z].mVertexId].y);
@@ -211,10 +216,10 @@ int main(int argc, char* argv[]){
                   }
                 printf("~~~~~~~~~~\n");
                 for(int y=0; y<mesh.mNumFaces; y++){
-                    printf("  Face: %d, 1: %d, 2: %d, 3: %d\n", y+1, mesh.mFaces[y].mIndices[0], mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2]); 
+                    printf("  Face: %d, 1: %d, 2: %d, 3: %d\n  NewFace: 1: %d, 2: %d, 3: %d\n", y+1, mesh.mFaces[y].mIndices[0], mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2], vert_new_order[mesh.mFaces[y].mIndices[0]],vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]); 
                     // if we have all the vertices necessary for this face
                     if(vert_new_order[mesh.mFaces[y].mIndices[0]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[1]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[2]]!=0){
-                        fprintf(pkt, "f %d %d %d\n", vert_new_order[mesh.mFaces[y].mIndices[0]], vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]);
+                          fprintf(pkt, "f %d %d %d\n", vert_new_order[mesh.mFaces[y].mIndices[0]],vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]);
                     }
 
             }
