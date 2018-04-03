@@ -172,7 +172,7 @@ void get_faces(const aiMesh& mesh, FILE* pkt, char* faces_drawn, int* vert_new_o
                             // if we have written all the vertices already, but not all
                             // vertices are present in this packet for the remaining
                             // faces
-                            if(vertcount==mesh.mNumBones && faces_drawn[y]!=1){
+                            if(vertcount==mesh.mNumVertices && faces_drawn[y]!=1){
                                 printf("TODO: FACE NOT DRAWN TO FIX DEBUG\n");
                             }
 
