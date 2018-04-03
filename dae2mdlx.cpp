@@ -160,12 +160,12 @@ struct DMA {
 };
 
 void get_faces(const aiMesh& mesh, FILE* pkt, char* faces_drawn, int* vert_new_order, int vertcount){
-                            printf("~~~~~~~~~~\n");
+                            // printf("~~~~~~~~~~\n");
                         for(int y=0; y<mesh.mNumFaces; y++){
                             //printf("  Face: %d, 1: %d, 2: %d, 3: %d\n  NewFace: 1: %d, 2: %d, 3: %d\n", y+1, mesh.mFaces[y].mIndices[0], mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2], vert_new_order[mesh.mFaces[y].mIndices[0]],vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]);
                             // if we have all the vertices necessary for this face
                             if(vert_new_order[mesh.mFaces[y].mIndices[0]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[1]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[2]]!=0 && faces_drawn[y]!=1){
-                                  printf("  Face: %d drawn\n", y+1);
+                                  // printf("  Face: %d drawn\n", y+1);
                                   fprintf(pkt, "f %d %d %d\n", vert_new_order[mesh.mFaces[y].mIndices[0]],vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]);
                                   faces_drawn[y]=1;
                             }
@@ -221,21 +221,19 @@ int main(int argc, char* argv[]){
             
             // we are writing a custom interlaced, bone-supporting obj here,
             // don't assume everything is following the obj standard! 
-            while(vertcount<mesh.mNumVertices){
 
+                printf("Generating Model Part %d, packet %d\n", i, vifpkt);
                 for(int y=0; y<mesh.mNumBones; y++){
                 // should be enough chars for a lifetime
-                char *filename = (char*)malloc(1024*sizeof(char));
-                strcpy(filename, argv[2]);
-                strcat(filename, "_");
-                sprintf(filename, "%d", vifpkt);
+                char *filename = (char*)malloc(PATH_MAX*sizeof(char));
+                sprintf(filename, "%s_mp%d_vif%d.obj", argv[2], i, vifpkt);
                 pkt=fopen(filename, "a");
 
-                    printf("  Bone: %d, Affecting %d vertices\n", y+1, mesh.mBones[y]->mNumWeights); 
+                    // printf("  Bone: %d, Affecting %d vertices\n", y+1, mesh.mBones[y]->mNumWeights); 
                     if(((vertcount+mesh.mBones[y]->mNumWeights)/vifpkt)<max_verts){
                         fprintf(pkt, "vb %d\n", mesh.mBones[y]->mNumWeights);
                         for(int z=0; z<mesh.mBones[y]->mNumWeights;z++){
-                            printf("    Vertex %d transformed as vertex %d\n", mesh.mBones[y]->mWeights[z].mVertexId, vertcount+1);
+                            // printf("    Vertex %d transformed as vertex %d\n", mesh.mBones[y]->mWeights[z].mVertexId, vertcount+1);
                             vert_new_order[mesh.mBones[y]->mWeights[z].mVertexId]=vertcount+1;
                             vertcount++;
                             fprintf(pkt, "v %f %f %f\n", mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].x,mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].y,mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].z);
@@ -251,7 +249,7 @@ int main(int argc, char* argv[]){
                     // against the total number of vertices, make 2 counters...?
                     // also we need to clear faces_drawn for faces which only
                     // have one or so vertex
-                        y--; vifpkt++; }
+                        y--; vifpkt++; printf("Generating Model Part %d, packet %d\n", i, vifpkt);}
                   fclose(pkt);
 
             /*printf("Mesh: %d, number of vertices: %d, number of bones: %d\n", i+1, mesh.mNumVertices, mesh.mNumBones);
@@ -263,7 +261,23 @@ int main(int argc, char* argv[]){
             printf("~~~~~~~~~~\n");*/
 
             }
-        }
+                printf("Generated Model Part %d, splitted in %d packets\n", i, vifpkt);
+                for(int s=1;s<vifpkt+1;s++){
+                    char *filename = (char*)malloc(PATH_MAX*sizeof(char));
+                    char *makepkt = (char*)malloc((PATH_MAX+10)*sizeof(char));
+                    char *kh2vname = (char*)malloc(PATH_MAX*sizeof(char));
+                    sprintf(filename, "%s_mp%d_vif%d.obj", argv[2], i, s);
+                    sprintf(kh2vname, "%s_mp%d_vif%d.kh2v", argv[2], i, s);
+                    sprintf(makepkt, "obj2kh2v \"%s\"", filename);
+                    system(makepkt); 
+
+                    // we need to generate vif packets and create the file here
+                    // but as it is filling up my hard drive I'm just removing
+                    // the files for now
+                    remove(filename);
+                    remove(kh2vname);
+
+                }
         }
 
         // write kh2 dma in-game header
