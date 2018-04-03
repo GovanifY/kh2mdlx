@@ -212,8 +212,11 @@ int main(int argc, char* argv[]){
             int vertcount=0;
             int max_verts=70;
             const aiMesh& mesh = *scene->mMeshes[i];
+            // for some reason those arrays aren't initialized as 0...?
             int vert_new_order[mesh.mNumVertices];
+            for(int z=0;z<mesh.mNumVertices;z++){vert_new_order[z]=0;}
             char faces_drawn[mesh.mNumFaces];
+            for(int z=0;z<mesh.mNumFaces;z++){faces_drawn[z]=0;}
             FILE *pkt;
             
             // we are writing a custom interlaced, bone-supporting obj here,
@@ -229,8 +232,8 @@ int main(int argc, char* argv[]){
                 pkt=fopen(filename, "a");
 
                     printf("  Bone: %d, Affecting %d vertices\n", y+1, mesh.mBones[y]->mNumWeights); 
-                    fprintf(pkt, "vb %d\n", mesh.mBones[y]->mNumWeights);
                     if(((vertcount+mesh.mBones[y]->mNumWeights)/vifpkt)<max_verts){
+                        fprintf(pkt, "vb %d\n", mesh.mBones[y]->mNumWeights);
                         for(int z=0; z<mesh.mBones[y]->mNumWeights;z++){
                             printf("    Vertex %d transformed as vertex %d\n", mesh.mBones[y]->mWeights[z].mVertexId, vertcount+1);
                             vert_new_order[mesh.mBones[y]->mWeights[z].mVertexId]=vertcount+1;
