@@ -162,9 +162,10 @@ struct DMA {
 void get_faces(const aiMesh& mesh, FILE* pkt, char* faces_drawn, int* vert_new_order, int vertcount){
                             printf("~~~~~~~~~~\n");
                         for(int y=0; y<mesh.mNumFaces; y++){
-                            printf("  Face: %d, 1: %d, 2: %d, 3: %d\n  NewFace: 1: %d, 2: %d, 3: %d\n", y+1, mesh.mFaces[y].mIndices[0], mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2], vert_new_order[mesh.mFaces[y].mIndices[0]],vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]);
+                            //printf("  Face: %d, 1: %d, 2: %d, 3: %d\n  NewFace: 1: %d, 2: %d, 3: %d\n", y+1, mesh.mFaces[y].mIndices[0], mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2], vert_new_order[mesh.mFaces[y].mIndices[0]],vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]);
                             // if we have all the vertices necessary for this face
                             if(vert_new_order[mesh.mFaces[y].mIndices[0]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[1]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[2]]!=0 && faces_drawn[y]!=1){
+                                  printf("  Face: %d drawn\n", y+1);
                                   fprintf(pkt, "f %d %d %d\n", vert_new_order[mesh.mFaces[y].mIndices[0]],vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]);
                                   faces_drawn[y]=1;
                             }
@@ -219,13 +220,14 @@ int main(int argc, char* argv[]){
             // don't assume everything is following the obj standard! 
             while(vertcount<mesh.mNumVertices){
 
+                for(int y=0; y<mesh.mNumBones; y++){
                 // should be enough chars for a lifetime
                 char *filename = (char*)malloc(1024*sizeof(char));
-                strcat(filename, argv[2]);
+                strcpy(filename, argv[2]);
                 strcat(filename, "_");
                 sprintf(filename, "%d", vifpkt);
-                // pkt=fopen(filename, "a");
-                for(int y=0; y<mesh.mNumBones; y++){
+                pkt=fopen(filename, "a");
+
                     printf("  Bone: %d, Affecting %d vertices\n", y+1, mesh.mBones[y]->mNumWeights); 
                     fprintf(pkt, "vb %d\n", mesh.mBones[y]->mNumWeights);
                     if(((vertcount+mesh.mBones[y]->mNumWeights)/vifpkt)<max_verts){
