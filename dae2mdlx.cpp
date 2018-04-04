@@ -217,18 +217,19 @@ int main(int argc, char* argv[]){
            
                     // should be enough chars for a lifetime
                     char *filename = (char*)malloc(PATH_MAX*sizeof(char));
-                    sprintf(filename, "%s_mp%d_vif%d.obj", argv[2], i, vifpkt);
+                    sprintf(filename, "%s_mp%d_pkt%d.obj", argv[2], i, vifpkt);
                     pkt=fopen(filename, "a");
 
                     // we make the biggest vif packet, possible, for this, here
                     // is the size that each type of entry takes:
                     //
+                    // header - 4 qwc
                     // bones - 1/4 of a qwc + 4 qwc(DMA tags)
                     // vertices - 1 qwc
                     // Face drawing - 3 qwc, UV and flags are bundled with it
                     // we here take the worst case scenario to ensure the vif
                     // packet < the maximum size 
-                    if((((ceil((bone_count+1)/4)+(4*(bone_count+1))) + (vert_count+1) + ((face_count+1)*3))+4)<255){
+                    if((((ceil((bone_count+3)/4)+(4*(bone_count+3))) + (vert_count+3) + ((face_count+1)*3))+4)<255){
                         // we update faces
                         faces_drawn[face_count]=y;
                         face_count++;
@@ -272,7 +273,20 @@ int main(int argc, char* argv[]){
                     // to file
                        // we do not sort bones as we sort vertices based on bone
                        // order
-                       for(int i=0; i<bone_count; i++){ fprintf(pkt, "vb %d\n", bones_drawn[i]); } 
+                       int bone_to_vertex[bone_count];
+                       for(int i=0; i<bone_count; i++){bone_to_vertex[i]=0;}
+                       int vert_new_order[vert_count];
+                       for(int i=0; i<vert_count; i++){vert_new_order[i]=0;}
+
+                       // we check the number of vertices assigned to each bone
+                       // in this packet, and reorganize them per bone
+                       for(int d=0; d<bone_count;d++){
+                            for(int e=0;e<mesh.mBones[bones_drawn[d]].mWeights;e++){
+                                for(int f=0;f<bone_count;f++){
+                                if(mesh.mBones[d]->mWeights[e].mVertexId == mesh.mFaces[y].mIndices[0]] ||
+
+
+                       for(int i=0; i<bone_count; i++){ fprintf(pkt, "vb %d\n", bone_to_vertex[i]); } 
                       
                        //TODO: write here Mati and DMA
                         y--; vifpkt++; face_count=0;printf("Generating Model Part %d, packet %d\n", i, vifpkt);}
@@ -284,8 +298,8 @@ int main(int argc, char* argv[]){
                     char *filename = (char*)malloc(PATH_MAX*sizeof(char));
                     char *makepkt = (char*)malloc((PATH_MAX+10)*sizeof(char));
                     char *kh2vname = (char*)malloc(PATH_MAX*sizeof(char));
-                    sprintf(filename, "%s_mp%d_vif%d.obj", argv[2], i, s);
-                    sprintf(kh2vname, "%s_mp%d_vif%d.kh2v", argv[2], i, s);
+                    sprintf(filename, "%s_mp%d_pkt%d.obj", argv[2], i, s);
+                    sprintf(kh2vname, "%s_mp%d_pkt%d.kh2v", argv[2], i, s);
                     sprintf(makepkt, "obj2kh2v \"%s\"", filename);
                     system(makepkt); 
 
