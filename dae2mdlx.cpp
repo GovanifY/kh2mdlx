@@ -222,6 +222,9 @@ int main(int argc, char* argv[]){
             // we are writing a custom interlaced, bone-supporting obj here,
             // don't assume everything is following the obj standard! 
 
+            // TODO: new model splitter idea: go by faces, then sort all
+            // vertices by bone order and do not go over X faces, which would
+            // ensure a consistant vif packet size
                 printf("Generating Model Part %d, packet %d\n", i, vifpkt);
                 for(int y=0; y<mesh.mNumBones; y++){
                 // should be enough chars for a lifetime
