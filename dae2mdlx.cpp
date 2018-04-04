@@ -228,7 +228,7 @@ int main(int argc, char* argv[]){
                     // Face drawing - 3 qwc, UV and flags are bundled with it
                     // we here take the worst case scenario to ensure the vif
                     // packet < the maximum size 
-                    if(((ceil((bone_count+1)/4)+(4*(bone_count+1))) + (vert_count+1) + ((face_count+1)*3))<255){
+                    if((((ceil((bone_count+1)/4)+(4*(bone_count+1))) + (vert_count+1) + ((face_count+1)*3))+4)<255){
                         // we update faces
                         faces_drawn[face_count]=y;
                         face_count++;
@@ -270,6 +270,11 @@ int main(int argc, char* argv[]){
                     // faces correctly and write this packet 
                     // TODO: sort vertices per bone, update faces index, write
                     // to file
+                       // we do not sort bones as we sort vertices based on bone
+                       // order
+                       for(int i=0; i<bone_count; i++){ fprintf(pkt, "vb %d\n", bones_drawn[i]); } 
+                      
+                       //TODO: write here Mati and DMA
                         y--; vifpkt++; face_count=0;printf("Generating Model Part %d, packet %d\n", i, vifpkt);}
                   fclose(pkt);
 
