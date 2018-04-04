@@ -158,27 +158,6 @@ struct DMA {
     unsigned int vif_inst1;
     unsigned int vif_inst2;
 };
-
-void get_faces(const aiMesh& mesh, FILE* pkt, char* faces_drawn, int* vert_new_order, int vertcount){
-                            // printf("~~~~~~~~~~\n");
-                        for(int y=0; y<mesh.mNumFaces; y++){
-                            //printf("  Face: %d, 1: %d, 2: %d, 3: %d\n  NewFace: 1: %d, 2: %d, 3: %d\n", y+1, mesh.mFaces[y].mIndices[0], mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2], vert_new_order[mesh.mFaces[y].mIndices[0]],vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]);
-                            // if we have all the vertices necessary for this face
-                            if(vert_new_order[mesh.mFaces[y].mIndices[0]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[1]]!=0 && vert_new_order[mesh.mFaces[y].mIndices[2]]!=0 && faces_drawn[y]!=1){
-                                  // printf("  Face: %d drawn\n", y+1);
-                                  fprintf(pkt, "f %d %d %d\n", vert_new_order[mesh.mFaces[y].mIndices[0]],vert_new_order[mesh.mFaces[y].mIndices[1]], vert_new_order[mesh.mFaces[y].mIndices[2]]);
-                                  faces_drawn[y]=1;
-                            }
-                            // if we have written all the vertices already, but not all
-                            // vertices are present in this packet for the remaining
-                            // faces
-                            if(vertcount==mesh.mNumVertices && faces_drawn[y]!=1){
-                                printf("TODO: FACE NOT DRAWN TO FIX DEBUG\n");
-                            }
-
-                    }
-
-                    }
                     
 
 int main(int argc, char* argv[]){
@@ -189,6 +168,8 @@ int main(int argc, char* argv[]){
         char empty[] = {0x00};
 
 		mdl=fopen("test.kh2m","wb");
+
+
 
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile( argv[2],
@@ -201,6 +182,11 @@ int main(int argc, char* argv[]){
             return -1;
         }
 
+
+        // write kh2 dma in-game header
+		for (int i=0; i<0x90;i++){fwrite(empty , 1 , sizeof(empty) , mdl);}
+
+
     /*Assimp::Exporter exporter;
     const aiExportFormatDesc* format = exporter.GetExportFormatDescription(0);
     exporter.Export(scene, "obj", "test.obj", scene->mFlags);*/
@@ -208,60 +194,84 @@ int main(int argc, char* argv[]){
         unsigned int mesh_nmb= scene->mNumMeshes;
         printf("Number of meshes: %d\n", mesh_nmb);
         for(int i=0; i<mesh_nmb;i++){
+            
             int vifpkt=1;
-            int vertcount=0;
-            int max_verts=70;
+            int vert_count=0;
+            int face_count=0;
+            int bone_count=0;
             const aiMesh& mesh = *scene->mMeshes[i];
             // for some reason those arrays aren't initialized as 0...?
-            int vert_new_order[mesh.mNumVertices];
-            for(int z=0;z<mesh.mNumVertices;z++){vert_new_order[z]=0;}
-            char faces_drawn[mesh.mNumFaces];
+            int vertices_drawn[mesh.mNumVertices];
+            for(int z=0;z<mesh.mNumVertices;z++){vertices_drawn[z]=0;}
+            int bones_drawn[mesh.mNumBones];
+            for(int z=0;z<mesh.mNumBones;z++){bones_drawn[z]=0;}
+            int faces_drawn[mesh.mNumFaces];
             for(int z=0;z<mesh.mNumFaces;z++){faces_drawn[z]=0;}
+
             FILE *pkt;
             
             // we are writing a custom interlaced, bone-supporting obj here,
             // don't assume everything is following the obj standard! 
-
-            // TODO: new model splitter idea: go by faces, then sort all
-            // vertices by bone order and do not go over X faces, which would
-            // ensure a consistant vif packet size
                 printf("Generating Model Part %d, packet %d\n", i, vifpkt);
-                for(int y=0; y<mesh.mNumBones; y++){
-                // should be enough chars for a lifetime
-                char *filename = (char*)malloc(PATH_MAX*sizeof(char));
-                sprintf(filename, "%s_mp%d_vif%d.obj", argv[2], i, vifpkt);
-                pkt=fopen(filename, "a");
+                for(int y=0; y<mesh.mNumFaces; y++){
+           
+                    // should be enough chars for a lifetime
+                    char *filename = (char*)malloc(PATH_MAX*sizeof(char));
+                    sprintf(filename, "%s_mp%d_vif%d.obj", argv[2], i, vifpkt);
+                    pkt=fopen(filename, "a");
 
-                    // printf("  Bone: %d, Affecting %d vertices\n", y+1, mesh.mBones[y]->mNumWeights); 
-                    if(((vertcount+mesh.mBones[y]->mNumWeights)/vifpkt)<max_verts){
-                        fprintf(pkt, "vb %d\n", mesh.mBones[y]->mNumWeights);
-                        for(int z=0; z<mesh.mBones[y]->mNumWeights;z++){
-                            // printf("    Vertex %d transformed as vertex %d\n", mesh.mBones[y]->mWeights[z].mVertexId, vertcount+1);
-                            vert_new_order[mesh.mBones[y]->mWeights[z].mVertexId]=vertcount+1;
-                            vertcount++;
-                            fprintf(pkt, "v %f %f %f\n", mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].x,mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].y,mesh.mVertices[mesh.mBones[y]->mWeights[z].mVertexId].z);
-                            fprintf(pkt, "vt %f %f\n", mesh.mTextureCoords[0][mesh.mBones[y]->mWeights[z].mVertexId].x, mesh.mTextureCoords[0][mesh.mBones[y]->mWeights[z].mVertexId].y);
-                            // we update possible faces at each vertex read
-                            get_faces(mesh,pkt,faces_drawn,vert_new_order,vertcount);
+                    // we make the biggest vif packet, possible, for this, here
+                    // is the size that each type of entry takes:
+                    //
+                    // bones - 1/4 of a qwc + 4 qwc(DMA tags)
+                    // vertices - 1 qwc
+                    // Face drawing - 3 qwc, UV and flags are bundled with it
+                    // we here take the worst case scenario to ensure the vif
+                    // packet < the maximum size 
+                    if(((ceil((bone_count+1)/4)+(4*(bone_count+1))) + (vert_count+1) + ((face_count+1)*3))<255){
+                        // we update faces
+                        faces_drawn[face_count]=y;
+                        face_count++;
+                        // we update bones
+                        int tmp_check=0;
+                        for(int d=0; d<mesh.mNumBones;d++){
+                            for(int e=0;e<mesh.mBones[d].mWeights;e++){
+                                if(mesh.mBones[d]->mWeights[e].mVertexId == mesh.mFaces[y].mIndices[0]] ||
+                                   mesh.mBones[d]->mWeights[e].mVertexId == mesh.mFaces[y].mIndices[1]] ||
+                                   mesh.mBones[d]->mWeights[e].mVertexId == mesh.mFaces[y].mIndices[2]]){
+                                   for(int f=0; f<bone_count;f++){ if(bones_drawn[f]==mesh.mBones[d]->mWeights[e].mVertexId){tmp_check=1;} }
+                                   // if we find a vertex of this face
+                                   // associated to any bone and it is not a
+                                   // duplicate we add it
+                                   if(tmp_check=0){bones_drawn[bone_count]=mesh.mBones[d]->mWeights[e].mVertexId; bone_count++;}
+                                }
                         }
-                    
+                        tmp_check=0;
+                        // we update vertices
+                        for(int d=0; d<vert_count;d++){
+                            if(vertices_drawn[d]==mesh.mVertices[mesh.mFaces[y].mIndices[0]].mVertexId){vertex_check=1;}
+                        }
+                        if(vertex_check==0){vertices_drawn[vert_count]=mesh.mVertices[mesh.mFaces[y].mIndices[0]].mVertexId; vert_count++;}
+                        tmp_check=0;
+                        for(int d=0; d<vert_count;d++){
+                            if(vertices_drawn[d]==mesh.mVertices[mesh.mFaces[y].mIndices[1]].mVertexId){tmp_check=1;}
+                        }
+                        if(tmp_check==0){vertices_drawn[vert_count]=mesh.mVertices[mesh.mFaces[y].mIndices[1]].mVertexUd; vert_count++;}
+                        tmp_check=0;
+                        for(int d=0; d<vert_count;d++){
+                            if(vertices_drawn[d]==mesh.mVertices[mesh.mFaces[y].mIndices[2]].mVertexId){tmp_check=1;}
+                        }
+                        if(tmp_check==0){vertices_drawn[vert_count]=mesh.mVertices[mesh.mFaces[y].mIndices[2]].mVertexId; vert_count++;}
+
                   }
                   else{
-                    // if we are over the number of vertices make a new packet
-                    // TODO: vertcount shouldn't be 0 as get_faces verifies it
-                    // against the total number of vertices, make 2 counters...?
-                    // also we need to clear faces_drawn for faces which only
-                    // have one or so vertex
-                        y--; vifpkt++; printf("Generating Model Part %d, packet %d\n", i, vifpkt);}
+                    // if we are over the maximum size allowed for a packet we
+                    // sort vertices per bones, rearrange the model to draw
+                    // faces correctly and write this packet 
+                    // TODO: sort vertices per bone, update faces index, write
+                    // to file
+                        y--; vifpkt++; face_count=0;printf("Generating Model Part %d, packet %d\n", i, vifpkt);}
                   fclose(pkt);
-
-            /*printf("Mesh: %d, number of vertices: %d, number of bones: %d\n", i+1, mesh.mNumVertices, mesh.mNumBones);
-            for(int y=0; y<mesh.mNumVertices;y++){
-                printf("  Vertex: %d, x: %f, y: %f, z: %f\n", y+1, mesh.mVertices[y].x, mesh.mVertices[y].y, mesh.mVertices[y].z); 
-                printf("  UV: %d, x: %f, y: %f\n", y+1, mesh.mTextureCoords[0][y].x, mesh.mTextureCoords[0][y].y); 
-            }
-            
-            printf("~~~~~~~~~~\n");*/
 
             }
                 printf("Generated Model Part %d, splitted in %d packets\n", i, vifpkt);
@@ -282,37 +292,6 @@ int main(int argc, char* argv[]){
 
                 }
         }
-
-        // write kh2 dma in-game header
-		for (int i=0; i<0x90;i++){fwrite(empty , 1 , sizeof(empty) , mdl);}
-
-        struct mdl_header *head=(mdl_header *)malloc(sizeof(struct mdl_header));
-        struct mdl_subpart_header *subh=(mdl_subpart_header *)malloc(sizeof(struct mdl_subpart_header));
-        head->nmb=3;
-        head->bone_cnt=1;
-        head->mdl_subpart_cnt=1;
-
-        // write here dummy headers, will need to modify their offsets later
-        int off_head = ftell(mdl);
-        fwrite(head , 1 , sizeof(struct mdl_header) , mdl);
-        int off_subh = ftell(mdl);
-        fwrite(subh , 1 , sizeof(struct mdl_subpart_header) , mdl);
-
-
-        int off_bone = ftell(mdl);
-        struct bone_entry *bone=(bone_entry *)malloc(sizeof(struct bone_entry));
-        bone->idx=0;
-        bone->parent=-1;
-        bone->sca_x=1.0;
-        bone->sca_y=1.0;
-        bone->sca_z=1.0;
-        bone->rot_x=1.0;
-        bone->rot_y=1.0;
-        bone->rot_z=1.0;
-        bone->trans_x=1.0;
-        bone->trans_y=1.0;
-        bone->trans_z=1.0;
-        fwrite(bone , 1 , sizeof(struct bone_entry) , mdl);
 
         // we do not have a dae parser yet so we take vif packets directly
         FILE * dummy_vif = fopen(argv[1], "rb");
