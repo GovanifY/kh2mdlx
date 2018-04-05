@@ -185,6 +185,7 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                        for(int i=0; i<bone_count; i++){bone_to_vertex[i]=0;}
                        int vert_new_order[vert_count];
                        for(int i=0; i<vert_count; i++){vert_new_order[i]=0;}
+                       int new_order_count=0;
 
                        // we check the number of vertices assigned to each bone
                        // in this packet, and reorganize them per bone
@@ -199,7 +200,22 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                        }
 
                        // we now sort vertices per bone order
-                       
+                       for(int d=0; d<bone_count;d++){
+                            for(int e=0;e<mesh.mBones[bones_drawn[d]]->mNumWeights;e++){
+                                for(int f=0;f<vert_count;f++){
+                                    int tmp_check=0;
+                                    if(mesh.mBones[bones_drawn[d]]->mWeights[e].mVertexId == vertices_drawn[f]){ 
+                                       for(int g=0; g<new_order_count;g++){ if(vert_new_order[g]==vertices_drawn[f]){tmp_check=1;} }
+                                       if(tmp_check==0){vert_new_order[new_order_count]=vertices_drawn[f]; new_order_count++;}
+                                }
+                            }
+                        }
+                       }
+                    printf("Sorted vertices: \n");
+                    for(int i=0; i<vert_count; i++){printf("%d, ", vert_new_order[i]);}
+                    printf("\n");
+                      
+                       // we write the sorted model packet
                        for(int i=0; i<vert_count;i++){
                             fprintf(pkt, "v %f %f %f\n", mesh.mVertices[vert_new_order[i]].x,mesh.mVertices[vert_new_order[i]].y,mesh.mVertices[vert_new_order[i]].z );
                             // TODO: maybe check according to assimp doc min and
