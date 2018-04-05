@@ -155,8 +155,6 @@ struct DMA {
     unsigned short vif_len;
     unsigned short res1;
     unsigned int vif_off;
-    unsigned int vif_inst1;
-    unsigned int vif_inst2;
 };
                     
 
@@ -246,7 +244,6 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                        } 
 
                       
-                       fclose(pkt);
 
                     char *kh2vname = (char*)malloc(PATH_MAX*sizeof(char));
                     char *dmaname = (char*)malloc(PATH_MAX*sizeof(char));
@@ -261,10 +258,40 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                     // we need to generate vif packets and create the file here
                     // but as it is filling up my hard drive I'm just removing
                     // the files for now
-                     remove(filename);
+                    // remove(filename);
+                    
+                    fseek(pkt, 0x24, SEEK_SET);
+                    char mat_vif_off;
+                    fread(&mat_vif_off, 4, 1, pkt);
+                    
+                    FILE *dma_file=fopen(dmaname, "wb");
+                    struct DMA *dma_entry=(DMA*)malloc(sizeof(struct DMA));
+                    fseek(pkt, 0x0, SEEK_END);
+                    dma_entry->vif_len = ftell(pkt)/16;
+                    dma_entry->res1 = 0x3000;
+                    // we don't know yet where in the final file our packet will
+                    // end up so we blank it out for now.
+                    dma_entry->vif_off=0;
+                    char vif_empty[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+                    fwrite(dma_entry , 1 , sizeof(struct DMA) , dma_file);
+                    fwrite(vif_empty , 1 , sizeof(vif_empty) , dma_file);
+                    for(int i=0; i<bone_count; i++){
+                        dma_entry->vif_len = 4;
+                        dma_entry->res1 = 0x3000;
+                        // we don't know yet where in the final file our packet will
+                        // end up so we blank it out for now.
+                        dma_entry->vif_off=bones_drawn[i];
+                        unsigned char vif_inst[] = {0x01, 0x01, 0x00, 0x01, 0x00, 0x80, 0x04, 0x6C};
+                        vif_inst[4]=mat_vif_off+(i*4);
+                        fwrite(dma_entry , 1 , sizeof(struct DMA) , dma_file);
+                        fwrite(vif_inst , 1 , sizeof(vif_inst) , dma_file);
+                    }
+                    char end_dma[] = {0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00};
+                    fwrite(end_dma , 1 , sizeof(end_dma) , dma_file);
+                    fclose(pkt);
+                    fclose(dma_file);
+                    // TODO: write Mati here
                     // remove(kh2vname);
-
-                       //TODO: write here Mati and DMA
 
 }
 int main(int argc, char* argv[]){
