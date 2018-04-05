@@ -221,9 +221,28 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                             fprintf(pkt, "vt %f %f\n", mesh.mTextureCoords[0][vert_new_order[i]].x, mesh.mTextureCoords[0][vert_new_order[i]].y);
                        }
                        for(int i=0; i<bone_count; i++){ fprintf(pkt, "vb %d\n", bone_to_vertex[i]); } 
-                       // TODO: rearrange faces using the new vertices order 
                        for(int i=0; i<face_count; i++){ 
-                           fprintf(pkt, "f %d %d %d\n", vert_new_order[mesh.mFaces[faces_drawn[i]].mIndices[0]]+1,vert_new_order[mesh.mFaces[faces_drawn[i]].mIndices[1]]+1, vert_new_order[mesh.mFaces[faces_drawn[i]].mIndices[2]]+1); } 
+                           int f1=-1;
+                           int f2=-1;
+                           int f3=-1;
+                           int y=0;
+                           while(f1==-1){
+                               if(mesh.mFaces[faces_drawn[i]].mIndices[0] == vert_new_order[y]){f1=y;}
+                               y++;
+                           }
+                           y=0;
+                           while(f2==-1){
+                               if(mesh.mFaces[faces_drawn[i]].mIndices[1] == vert_new_order[y]){f2=y;}
+                               y++;
+                           }
+                           y=0;
+                           while(f3==-1){
+                               if(mesh.mFaces[faces_drawn[i]].mIndices[2] == vert_new_order[y]){f3=y;}
+                               y++;
+                           }
+                           fprintf(pkt, "f %d %d %d\n", f1+1,f2+1, f3+1); 
+                       } 
+
                       
                        fclose(pkt);
 
@@ -236,7 +255,7 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                     // we need to generate vif packets and create the file here
                     // but as it is filling up my hard drive I'm just removing
                     // the files for now
-                    // remove(filename);
+                   //  remove(filename);
                      remove(kh2vname);
 
                        //TODO: write here Mati and DMA
