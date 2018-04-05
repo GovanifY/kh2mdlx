@@ -313,16 +313,16 @@ int main(int argc, char* argv[]){
                         }
                         if(tmp_check==0){vertices_drawn[vert_count]=mesh.mFaces[y].mIndices[2]; vert_count++;}
 
-                        if(y==mesh.mNumFaces-1){write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i, vifpkt, mesh, argv[2]);}
+                        if(y==mesh.mNumFaces-1){write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt, mesh, argv[2]);}
 
                   }
                   else{
-                      write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i, vifpkt,  mesh, argv[2]);
+                      write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt,  mesh, argv[2]);
                         y--; vifpkt++; face_count=0; bone_count=0; vert_count=0;
                         for(int z=0;z<mesh.mNumVertices;z++){vertices_drawn[z]=0;}
                         for(int z=0;z<mesh.mNumBones;z++){bones_drawn[z]=0;}
                         for(int z=0;z<mesh.mNumFaces;z++){faces_drawn[z]=0;}
-                        printf("Generating Model Part %d, packet %d\n", i, vifpkt);}
+                        printf("Generating Model Part %d, packet %d\n", i+1, vifpkt);}
                   // fclose(pkt);
 
             }
