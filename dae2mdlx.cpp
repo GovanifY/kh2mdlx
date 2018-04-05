@@ -176,8 +176,6 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                     printf("\n");
                     // if we are over the maximum size allowed for a packet we
                     // sort vertices per bones, rearrange the model to draw
-                    // faces correctly and write this packet 
-                    // TODO: sort vertices per bone, update faces index, write
                     // to file
                        // we do not sort bones as we sort vertices based on bone
                        // order
@@ -223,9 +221,24 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                             fprintf(pkt, "vt %f %f\n", mesh.mTextureCoords[0][vert_new_order[i]].x, mesh.mTextureCoords[0][vert_new_order[i]].y);
                        }
                        for(int i=0; i<bone_count; i++){ fprintf(pkt, "vb %d\n", bone_to_vertex[i]); } 
-                       // nope bad
-                       for(int i=0; i<face_count; i++){ fprintf(pkt, "f %d %d %d\n", vert_new_order[mesh.mFaces[i].mIndices[0]],vert_new_order[mesh.mFaces[i].mIndices[1]], vert_new_order[mesh.mFaces[i].mIndices[2]]); } 
+                       // TODO: rearrange faces using the new vertices order 
+                       for(int i=0; i<face_count; i++){ 
+                           fprintf(pkt, "f %d %d %d\n", vert_new_order[mesh.mFaces[faces_drawn[i]].mIndices[0]]+1,vert_new_order[mesh.mFaces[faces_drawn[i]].mIndices[1]]+1, vert_new_order[mesh.mFaces[faces_drawn[i]].mIndices[2]]+1); } 
                       
+                       fclose(pkt);
+
+                    char *kh2vname = (char*)malloc(PATH_MAX*sizeof(char));
+                    char *makepkt = (char*)malloc((PATH_MAX+10)*sizeof(char));
+                    sprintf(kh2vname, "%s_mp%d_pkt%d.kh2v", name, mp, vifpkt);
+                    sprintf(makepkt, "obj2kh2v \"%s\"", filename);
+                    system(makepkt); 
+
+                    // we need to generate vif packets and create the file here
+                    // but as it is filling up my hard drive I'm just removing
+                    // the files for now
+                    // remove(filename);
+                     remove(kh2vname);
+
                        //TODO: write here Mati and DMA
 
 }
@@ -344,20 +357,7 @@ int main(int argc, char* argv[]){
             }
                 printf("Generated Model Part %d, splitted in %d packets\n", i+1, vifpkt);
                 for(int s=1;s<vifpkt+1;s++){
-                    char *filename = (char*)malloc(PATH_MAX*sizeof(char));
-                    char *makepkt = (char*)malloc((PATH_MAX+10)*sizeof(char));
-                    char *kh2vname = (char*)malloc(PATH_MAX*sizeof(char));
-                    sprintf(filename, "%s_mp%d_pkt%d.obj", argv[2], i+1, s);
-                    sprintf(kh2vname, "%s_mp%d_pkt%d.kh2v", argv[2], i+1, s);
-                    sprintf(makepkt, "obj2kh2v \"%s\"", filename);
-                    system(makepkt); 
-
-                    // we need to generate vif packets and create the file here
-                    // but as it is filling up my hard drive I'm just removing
-                    // the files for now
-                     remove(filename);
-                    remove(kh2vname);
-
+                   
                 }
         }
 
