@@ -167,13 +167,14 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                     sprintf(filename, "%s_mp%d_pkt%d.obj", name, mp, vifpkt);
                     FILE *pkt=fopen(filename, "w");
 
+                    /*
                     printf("%d, %d, %d\n", bone_count, vert_count, face_count);
                     for(int i=0; i<bone_count; i++){printf("%d, ", bones_drawn[i]);}
                     printf("\n");
                     for(int i=0; i<vert_count; i++){printf("%d, ", vertices_drawn[i]);}
                     printf("\n");
                     for(int i=0; i<face_count; i++){printf("%d, ", faces_drawn[i]);}
-                    printf("\n");
+                    printf("\n");*/
                     // if we are over the maximum size allowed for a packet we
                     // sort vertices per bones, rearrange the model to draw
                     // to file
@@ -209,9 +210,10 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                             }
                         }
                        }
+                       /*
                     printf("Sorted vertices: \n");
                     for(int i=0; i<vert_count; i++){printf("%d, ", vert_new_order[i]);}
-                    printf("\n");
+                    printf("\n");*/
                       
                        // we write the sorted model packet
                        for(int i=0; i<vert_count;i++){
@@ -247,23 +249,27 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                        fclose(pkt);
 
                     char *kh2vname = (char*)malloc(PATH_MAX*sizeof(char));
+                    char *dmaname = (char*)malloc(PATH_MAX*sizeof(char));
+                    char *matname = (char*)malloc(PATH_MAX*sizeof(char));
                     char *makepkt = (char*)malloc((PATH_MAX+10)*sizeof(char));
                     sprintf(kh2vname, "%s_mp%d_pkt%d.kh2v", name, mp, vifpkt);
+                    sprintf(dmaname, "%s_mp%d_pkt%d.dma", name, mp, vifpkt);
+                    sprintf(matname, "%s_mp%d_pkt%d.mat", name, mp, vifpkt);
                     sprintf(makepkt, "obj2kh2v \"%s\"", filename);
                     system(makepkt); 
 
                     // we need to generate vif packets and create the file here
                     // but as it is filling up my hard drive I'm just removing
                     // the files for now
-                   //  remove(filename);
-                     remove(kh2vname);
+                     remove(filename);
+                    // remove(kh2vname);
 
                        //TODO: write here Mati and DMA
 
 }
 int main(int argc, char* argv[]){
 	printf("dae2mdlx\n--- Early rev, don't blame me if it eats your cat\n\n");
-	if(argc<3){printf("usage: dae2mdlx test.kh2v model.dae"); return -1;}
+	if(argc<2){printf("usage: dae2mdlx model.dae\n"); return -1;}
 
 		FILE *mdl;
         char empty[] = {0x00};
@@ -273,7 +279,7 @@ int main(int argc, char* argv[]){
 
 
         Assimp::Importer importer;
-        const aiScene* scene = importer.ReadFile( argv[2],
+        const aiScene* scene = importer.ReadFile( argv[1],
                                              aiProcess_Triangulate            |
                                              aiProcess_JoinIdenticalVertices  |
                                              aiProcess_SortByPType);
@@ -311,7 +317,7 @@ int main(int argc, char* argv[]){
 
             // we are writing a custom interlaced, bone-supporting obj here,
             // don't assume everything is following the obj standard! 
-                printf("Generating Model Part %d, packet %d\n", i+1, vifpkt);
+                // printf("Generating Model Part %d, packet %d\n", i+1, vifpkt);
                 for(int y=0; y<mesh.mNumFaces; y++){
           
                     // we make the biggest vif packet, possible, for this, here
@@ -328,7 +334,7 @@ int main(int argc, char* argv[]){
                         faces_drawn[face_count]=y;
                         face_count++;
                         // we update bones
-                        printf("This face has the vertices %d %d %d\n",mesh.mFaces[y].mIndices[0],mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2]);
+                        // printf("This face has the vertices %d %d %d\n",mesh.mFaces[y].mIndices[0],mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2]);
                         int tmp_check=0;
                         for(int d=0; d<mesh.mNumBones;d++){
                             for(int e=0;e<mesh.mBones[d]->mNumWeights;e++){
@@ -361,23 +367,21 @@ int main(int argc, char* argv[]){
                         }
                         if(tmp_check==0){vertices_drawn[vert_count]=mesh.mFaces[y].mIndices[2]; vert_count++;}
 
-                        if(y==mesh.mNumFaces-1){write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt, mesh, argv[2]);}
+                        if(y==mesh.mNumFaces-1){write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt, mesh, argv[1]);}
 
                   }
                   else{
-                      write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt,  mesh, argv[2]);
+                      write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt,  mesh, argv[1]);
                         y--; vifpkt++; face_count=0; bone_count=0; vert_count=0;
                         for(int z=0;z<mesh.mNumVertices;z++){vertices_drawn[z]=0;}
                         for(int z=0;z<mesh.mNumBones;z++){bones_drawn[z]=0;}
                         for(int z=0;z<mesh.mNumFaces;z++){faces_drawn[z]=0;}
-                        printf("Generating Model Part %d, packet %d\n", i+1, vifpkt);}
+                        // printf("Generating Model Part %d, packet %d\n", i+1, vifpkt);
+                        }
                   // fclose(pkt);
 
             }
                 printf("Generated Model Part %d, splitted in %d packets\n", i+1, vifpkt);
-                for(int s=1;s<vifpkt+1;s++){
-                   
-                }
         }
 
         /*
@@ -443,5 +447,4 @@ int main(int argc, char* argv[]){
         */
 		fclose(mdl);
 }
-
 
