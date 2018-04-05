@@ -284,14 +284,15 @@ int main(int argc, char* argv[]){
                         int tmp_check=0;
                         for(int d=0; d<mesh.mNumBones;d++){
                             for(int e=0;e<mesh.mBones[d]->mNumWeights;e++){
+                                tmp_check=0;
                                 if(mesh.mBones[d]->mWeights[e].mVertexId == mesh.mFaces[y].mIndices[0] ||
                                    mesh.mBones[d]->mWeights[e].mVertexId == mesh.mFaces[y].mIndices[1] ||
                                    mesh.mBones[d]->mWeights[e].mVertexId == mesh.mFaces[y].mIndices[2]){
-                                   for(int f=0; f<bone_count;f++){ if(bones_drawn[f]==mesh.mBones[d]->mWeights[e].mVertexId){tmp_check=1;} }
+                                   for(int f=0; f<bone_count;f++){ if(bones_drawn[f]==d){tmp_check=1;} }
                                    // if we find a vertex of this face
                                    // associated to any bone and it is not a
                                    // duplicate we add it
-                                   if(tmp_check=0){bones_drawn[bone_count]=mesh.mBones[d]->mWeights[e].mVertexId; bone_count++;}
+                                   if(tmp_check==0){bones_drawn[bone_count]=d; bone_count++;}
                                 }
                             }
                         }
