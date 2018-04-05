@@ -243,8 +243,8 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                            fprintf(pkt, "f %d %d %d\n", f1+1,f2+1, f3+1); 
                        } 
 
-                      
-
+                    
+                       
                     char *kh2vname = (char*)malloc(PATH_MAX*sizeof(char));
                     char *dmaname = (char*)malloc(PATH_MAX*sizeof(char));
                     char *matname = (char*)malloc(PATH_MAX*sizeof(char));
@@ -252,24 +252,32 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                     sprintf(kh2vname, "%s_mp%d_pkt%d.kh2v", name, mp, vifpkt);
                     sprintf(dmaname, "%s_mp%d_pkt%d.dma", name, mp, vifpkt);
                     sprintf(matname, "%s_mp%d_pkt%d.mat", name, mp, vifpkt);
+
+
+
+                    fclose(pkt);
+
                     sprintf(makepkt, "obj2kh2v \"%s\"", filename);
                     system(makepkt); 
 
-                    // we need to generate vif packets and create the file here
-                    // but as it is filling up my hard drive I'm just removing
-                    // the files for now
-                    // remove(filename);
-                    
-                    fseek(pkt, 0x24, SEEK_SET);
+                    FILE *kh2v = fopen(kh2vname, "rb");
+                    fseek(kh2v, 0x24, SEEK_SET);
                     char mat_vif_off;
-                    fread(&mat_vif_off, 4, 1, pkt);
-                    
-                    FILE *dma_file=fopen(dmaname, "wb");
+                    fread(&mat_vif_off, 4, 1, kh2v);
+                    fseek(kh2v, 0x18, SEEK_SET);
+                    int mat_cnt;
+                    fread(&mat_cnt, sizeof(int), 1, kh2v);
+                    printf("hi %d, %d\n", mat_vif_off, mat_cnt);
+
+
+                    // remove(filename);
+                   
+                     FILE *dma_file=fopen(dmaname, "wb");
                     struct DMA *dma_entry=(DMA*)malloc(sizeof(struct DMA));
-                    fseek(pkt, 0x0, SEEK_END);
-                    dma_entry->vif_len = ftell(pkt)/16;
+                    fseek(kh2v, 0x0, SEEK_END);
+                    dma_entry->vif_len = ftell(kh2v)/16;
                     dma_entry->res1 = 0x3000;
-                    // we don't know yet where in the final file our packet will
+                    // TOFIX: we don't know yet where in the final file our packet will
                     // end up so we blank it out for now.
                     dma_entry->vif_off=0;
                     char vif_empty[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -288,8 +296,16 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                     }
                     char end_dma[] = {0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00};
                     fwrite(end_dma , 1 , sizeof(end_dma) , dma_file);
-                    fclose(pkt);
+
+                    FILE *mat_file=fopen(matname, "wb");
+                    fwrite(&mat_cnt, 1, sizeof(mat_cnt), mat_file); 
+                    for(int i=0; i<bone_count; i++){ fwrite(&bones_drawn[i], 1, sizeof(bones_drawn[i]), mat_file); }
+                    // TOFIX: there is no -1 at the end of the last subpacket
+                    int end_mat = -1;
+                    fwrite(&end_mat, 1, sizeof(end_mat), mat_file);
+                    
                     fclose(dma_file);
+                    fclose(mat_file);
                     // TODO: write Mati here
                     // remove(kh2vname);
 
