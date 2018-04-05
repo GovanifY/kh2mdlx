@@ -280,6 +280,7 @@ int main(int argc, char* argv[]){
                         faces_drawn[face_count]=y;
                         face_count++;
                         // we update bones
+                        printf("This face has the vertices %d %d %d\n",mesh.mFaces[y].mIndices[0],mesh.mFaces[y].mIndices[1], mesh.mFaces[y].mIndices[2]);
                         int tmp_check=0;
                         for(int d=0; d<mesh.mNumBones;d++){
                             for(int e=0;e<mesh.mBones[d]->mNumWeights;e++){
@@ -316,7 +317,11 @@ int main(int argc, char* argv[]){
                   }
                   else{
                       write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i, vifpkt,  mesh, argv[2]);
-                        y--; vifpkt++; face_count=0;printf("Generating Model Part %d, packet %d\n", i, vifpkt);}
+                        y--; vifpkt++; face_count=0; bone_count=0; vert_count=0;
+                        for(int z=0;z<mesh.mNumVertices;z++){vertices_drawn[z]=0;}
+                        for(int z=0;z<mesh.mNumBones;z++){bones_drawn[z]=0;}
+                        for(int z=0;z<mesh.mNumFaces;z++){faces_drawn[z]=0;}
+                        printf("Generating Model Part %d, packet %d\n", i, vifpkt);}
                   // fclose(pkt);
 
             }
@@ -333,7 +338,7 @@ int main(int argc, char* argv[]){
                     // we need to generate vif packets and create the file here
                     // but as it is filling up my hard drive I'm just removing
                     // the files for now
-                   // remove(filename);
+                     remove(filename);
                     remove(kh2vname);
 
                 }
