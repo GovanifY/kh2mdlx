@@ -544,9 +544,9 @@ int main(int argc, char* argv[]){
                 char *dmaname = (char*)malloc(PATH_MAX*sizeof(char));
                 sprintf(dmaname, "%s_mp%d_pkt%d.dma", argv[1], i+1, y+1);
                 
-                FILE *dma_final = fopen(dmaname, "ab");
+                FILE *dma_final = fopen(dmaname, "rb+");
                 fseek(dma_final, 0x4, SEEK_SET);
-                // fwrite(&vifp_off[y], 1, sizeof(vifp_off[y]), dma_final);
+                fwrite(&vifp_off[y], 1, sizeof(vifp_off[y]), dma_final);
                 fclose(dma_final);
                 dma_final = fopen(dmaname, "rb");
 
