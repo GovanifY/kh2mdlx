@@ -117,7 +117,7 @@ struct mdl_header {
     unsigned int bone_off;
     unsigned int unk_off;
     unsigned short mdl_subpart_cnt; 
-    unsigned short unk3; 
+    unsigned short unk2; 
 };
 
 struct mdl_subpart_header {
@@ -134,9 +134,10 @@ struct mdl_subpart_header {
 struct bone_entry {
     unsigned short idx;
     unsigned short res1;
-    unsigned int parent;
-    unsigned int res2;
+    unsigned short parent;
+    unsigned short res2;
     unsigned int unk1;
+    unsigned int unk2;
     float sca_x;
     float sca_y;
     float sca_z;
@@ -158,7 +159,7 @@ struct DMA {
 };
                     
 
-void write_packet(int vert_count, int bone_count, int face_count, int bones_drawn[], int faces_drawn[], int vertices_drawn[], int mp, int vifpkt, const aiMesh& mesh, char *name){
+void write_packet(int vert_count, int bone_count, int face_count, int bones_drawn[], int faces_drawn[], int vertices_drawn[], int mp, int vifpkt, const aiMesh& mesh, char *name, int last){
  
                     // should be enough chars for a lifetime
                     char *filename = (char*)malloc(PATH_MAX*sizeof(char));
@@ -267,10 +268,9 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                     fseek(kh2v, 0x18, SEEK_SET);
                     int mat_cnt;
                     fread(&mat_cnt, sizeof(int), 1, kh2v);
-                    printf("hi %d, %d\n", mat_vif_off, mat_cnt);
 
 
-                    // remove(filename);
+                    remove(filename);
                    
                      FILE *dma_file=fopen(dmaname, "wb");
                     struct DMA *dma_entry=(DMA*)malloc(sizeof(struct DMA));
@@ -300,8 +300,8 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                     FILE *mat_file=fopen(matname, "wb");
                     fwrite(&mat_cnt, 1, sizeof(mat_cnt), mat_file); 
                     for(int i=0; i<bone_count; i++){ fwrite(&bones_drawn[i], 1, sizeof(bones_drawn[i]), mat_file); }
-                    // TOFIX: there is no -1 at the end of the last subpacket
-                    int end_mat = -1;
+                    int end_mat=-1;
+                    if(last){end_mat = 0;}
                     fwrite(&end_mat, 1, sizeof(end_mat), mat_file);
                     
                     fclose(dma_file);
@@ -333,19 +333,18 @@ int main(int argc, char* argv[]){
         }
 
 
-        // write kh2 dma in-game header
-		for (int i=0; i<0x90;i++){fwrite(empty , 1 , sizeof(empty) , mdl);}
-
+    
 
     /*Assimp::Exporter exporter;
     const aiExportFormatDesc* format = exporter.GetExportFormatDescription(0);
     exporter.Export(scene, "obj", "test.obj", scene->mFlags);*/
 
         unsigned int mesh_nmb= scene->mNumMeshes;
+        int vifpkt[mesh_nmb];
         printf("Number of meshes: %d\n", mesh_nmb);
         for(int i=0; i<mesh_nmb;i++){
             
-            int vifpkt=1;
+            vifpkt[i]=1;
             int vert_count=0;
             int face_count=0;
             int bone_count=0;
@@ -410,12 +409,12 @@ int main(int argc, char* argv[]){
                         }
                         if(tmp_check==0){vertices_drawn[vert_count]=mesh.mFaces[y].mIndices[2]; vert_count++;}
 
-                        if(y==mesh.mNumFaces-1){write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt, mesh, argv[1]);}
+                        if(y==mesh.mNumFaces-1){write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt[i], mesh, argv[1], 1);}
 
                   }
                   else{
-                      write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt,  mesh, argv[1]);
-                        y--; vifpkt++; face_count=0; bone_count=0; vert_count=0;
+                      write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt[i],  mesh, argv[1], 0);
+                        y--; vifpkt[i]++; face_count=0; bone_count=0; vert_count=0;
                         for(int z=0;z<mesh.mNumVertices;z++){vertices_drawn[z]=0;}
                         for(int z=0;z<mesh.mNumBones;z++){bones_drawn[z]=0;}
                         for(int z=0;z<mesh.mNumFaces;z++){faces_drawn[z]=0;}
@@ -424,8 +423,141 @@ int main(int argc, char* argv[]){
                   // fclose(pkt);
 
             }
-                printf("Generated Model Part %d, splitted in %d packets\n", i+1, vifpkt);
+                printf("Generated Model Part %d, splitted in %d packets\n", i+1, vifpkt[i]);
         }
+
+        // now that we have all intermediate files we can finally begin creating
+        // the actual model by assembling all of them together
+        // write kh2 dma in-game header
+		for (int i=0; i<0x90;i++){fwrite(empty , 1 , sizeof(empty) , mdl);}
+
+
+        unsigned int old_mp=0;
+        for(int i=0; i<mesh_nmb;i++){
+            const aiMesh& mesh = *scene->mMeshes[i];
+            if(old_mp){
+                unsigned int cur_pos = ftell(mdl)-0x90;
+                fseek(mdl, old_mp, SEEK_SET);
+                fwrite(&cur_pos, 1, sizeof(cur_pos), mdl);
+                fseek(mdl, cur_pos, SEEK_SET);
+            }
+            old_mp=ftell(mdl);
+            struct mdl_header* head = (mdl_header*)malloc(sizeof(struct mdl_header));
+            head->nmb=3;
+            head->res1=0;
+            head->res2=0;
+            // this is where old_mp writes for the old packet
+            head->next_mdl_header=0;
+            head->bone_cnt=mesh.mNumBones;
+            head->unk1=0;
+            // we need to write this once we generated the bone tables
+            head->bone_off=0;
+            // as this table is unused nobody cares and we blank it out, saves
+            // space
+            head->unk_off=0;
+            head->mdl_subpart_cnt=vifpkt[i];
+            head->unk2=0;
+            fwrite(head , 1 , sizeof(struct mdl_header) , mdl);
+
+            for(int y=0; y<vifpkt[i]; y++){
+                // write subheader here!
+                struct mdl_subpart_header* subhead = (mdl_subpart_header*)malloc(sizeof(struct mdl_subpart_header));
+                // TODO: verify what those unknowns are! 
+                // we do not have any offset yet so we just blank out everything
+                subhead->unk1=0;
+                subhead->texture_idx=i;
+                subhead->unk2=0;
+                subhead->unk3=0;
+                subhead->DMA_off=0;
+                subhead->mat_off=0;
+                subhead->unk4=0;
+                subhead->unk5=0;
+                fwrite(subhead , 1 , sizeof(struct mdl_subpart_header) , mdl);
+
+            }
+
+            // TOFIX: verify organization of all of those parts!!
+            for(int y=0; y<mesh.mNumBones;y++){
+
+                struct bone_entry* bone = (bone_entry*)malloc(sizeof(struct bone_entry));
+                bone->idx=y;
+                bone->res1=0;
+                // FIXME: write correctly parent and coordinates absolutely!!!
+                bone->parent=0;
+                bone->res2=-1;
+                bone->unk1=0;
+                bone->sca_x=0;
+                bone->sca_y=0;
+                bone->sca_z=0;
+                bone->sca_w=0;
+                bone->rot_x=0;
+                bone->rot_y=0;
+                bone->rot_z=0;
+                bone->rot_w=0;
+                bone->trans_x=0;
+                bone->trans_y=0;
+                bone->trans_z=0;
+                bone->trans_w=0;
+                fwrite(bone , 1 , sizeof(struct bone_entry) , mdl);
+            }
+            
+            for(int y=0; y<vifpkt[i]; y++){
+                char *kh2vname = (char*)malloc(PATH_MAX*sizeof(char));
+                sprintf(kh2vname, "%s_mp%d_pkt%d.kh2v", argv[1], i+1, y+1);
+                FILE *vif_final = fopen(kh2vname, "rb");
+
+                size_t n, m;
+                unsigned char buff[8192];
+                do {
+                    n = fread(buff, 1, sizeof buff, vif_final);
+                    if (n) m = fwrite(buff, 1, n, mdl);
+                    else   m = 0;
+                } while ((n > 0) && (n == m));
+
+                fclose(vif_final);
+                remove(kh2vname);
+            }
+
+            for(int y=0; y<vifpkt[i]; y++){
+                char *dmaname = (char*)malloc(PATH_MAX*sizeof(char));
+                sprintf(dmaname, "%s_mp%d_pkt%d.dma", argv[1], i+1, y+1);
+                FILE *dma_final = fopen(dmaname, "rb");
+
+                size_t n, m;
+                unsigned char buff[8192];
+                do {
+                    n = fread(buff, 1, sizeof buff, dma_final);
+                    if (n) m = fwrite(buff, 1, n, mdl);
+                    else   m = 0;
+                } while ((n > 0) && (n == m));
+
+                fclose(dma_final);
+                remove(dmaname);
+            }
+
+            for(int y=0; y<vifpkt[i]; y++){
+                char *matname = (char*)malloc(PATH_MAX*sizeof(char));
+                sprintf(matname, "%s_mp%d_pkt%d.mat", argv[1], i+1, y+1);
+                FILE *mat_final = fopen(matname, "rb");
+
+                size_t n, m;
+                unsigned char buff[8192];
+                do {
+                    n = fread(buff, 1, sizeof buff, mat_final);
+                    if (n) m = fwrite(buff, 1, n, mdl);
+                    else   m = 0;
+                } while ((n > 0) && (n == m));
+
+                fclose(mat_final);
+                remove(matname);
+                while(ftell(mdl)%16!=0){fwrite(empty , 1 , sizeof(empty) , mdl);}
+
+            }
+
+
+            
+        }
+
 
         /*
         // we do not have a dae parser yet so we take vif packets directly
