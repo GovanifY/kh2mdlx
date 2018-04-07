@@ -435,6 +435,7 @@ int main(int argc, char* argv[]){
         unsigned int old_mp=0;
         for(int i=0; i<mesh_nmb;i++){
             unsigned int subp_off[vifpkt[i]];
+            unsigned int vifp_off[vifpkt[i]];
             const aiMesh& mesh = *scene->mMeshes[i];
             if(old_mp){
                 unsigned int cur_pos = ftell(mdl)-0x90;
@@ -460,6 +461,26 @@ int main(int argc, char* argv[]){
             head->mdl_subpart_cnt=vifpkt[i];
             head->unk2=0;
             fwrite(head , 1 , sizeof(struct mdl_header) , mdl);
+
+            
+
+            for(int y=0; y<vifpkt[i]; y++){
+                // write subheader here!
+                subp_off[y]=ftell(mdl);
+                struct mdl_subpart_header* subhead = (mdl_subpart_header*)malloc(sizeof(struct mdl_subpart_header));
+                // TODO: verify what those unknowns are! 
+                // we do not have any offset yet so we just blank out everything
+                subhead->unk1=0;
+                subhead->texture_idx=i;
+                subhead->unk2=0;
+                subhead->unk3=0;
+                subhead->DMA_off=0;
+                subhead->mat_off=0;
+                subhead->unk4=0;
+                subhead->unk5=0;
+                fwrite(subhead , 1 , sizeof(struct mdl_subpart_header) , mdl);
+
+            }
 
 
             for(int y=0; y<mesh.mNumBones;y++){
@@ -492,26 +513,10 @@ int main(int argc, char* argv[]){
                 bone->trans_w=1;
                 fwrite(bone , 1 , sizeof(struct bone_entry) , mdl);
             }
-            
 
             for(int y=0; y<vifpkt[i]; y++){
-                // write subheader here!
-                subp_off[y]=ftell(mdl);
-                struct mdl_subpart_header* subhead = (mdl_subpart_header*)malloc(sizeof(struct mdl_subpart_header));
-                // TODO: verify what those unknowns are! 
-                // we do not have any offset yet so we just blank out everything
-                subhead->unk1=0;
-                subhead->texture_idx=i;
-                subhead->unk2=0;
-                subhead->unk3=0;
-                subhead->DMA_off=0;
-                subhead->mat_off=0;
-                subhead->unk4=0;
-                subhead->unk5=0;
-                fwrite(subhead , 1 , sizeof(struct mdl_subpart_header) , mdl);
 
-            }
-            for(int y=0; y<vifpkt[i]; y++){
+                vifp_off[y]=ftell(mdl)-0x90;
                 char *kh2vname = (char*)malloc(PATH_MAX*sizeof(char));
                 sprintf(kh2vname, "%s_mp%d_pkt%d.kh2v", argv[1], i+1, y+1);
                 FILE *vif_final = fopen(kh2vname, "rb");
@@ -529,9 +534,22 @@ int main(int argc, char* argv[]){
             }
 
             for(int y=0; y<vifpkt[i]; y++){
+
+                unsigned int cur_pos = ftell(mdl);
+                fseek(mdl, subp_off[y]+0x10, SEEK_SET);
+                int dmahdr = cur_pos-0x90;
+                fwrite(&dmahdr , 1 , sizeof(dmahdr) , mdl);
+                fseek(mdl, cur_pos, SEEK_SET);
+
                 char *dmaname = (char*)malloc(PATH_MAX*sizeof(char));
                 sprintf(dmaname, "%s_mp%d_pkt%d.dma", argv[1], i+1, y+1);
-                FILE *dma_final = fopen(dmaname, "rb");
+                
+                FILE *dma_final = fopen(dmaname, "ab");
+                fseek(dma_final, 0x4, SEEK_SET);
+                // fwrite(&vifp_off[y], 1, sizeof(vifp_off[y]), dma_final);
+                fclose(dma_final);
+                dma_final = fopen(dmaname, "rb");
+
 
                 size_t n, m;
                 unsigned char buff[8192];
@@ -546,6 +564,13 @@ int main(int argc, char* argv[]){
             }
 
             for(int y=0; y<vifpkt[i]; y++){
+
+                unsigned int cur_pos = ftell(mdl);
+                fseek(mdl, subp_off[y]+0x14, SEEK_SET);
+                int mathdr = cur_pos-0x90;
+                fwrite(&mathdr , 1 , sizeof(mathdr) , mdl);
+                fseek(mdl, cur_pos, SEEK_SET);
+
                 char *matname = (char*)malloc(PATH_MAX*sizeof(char));
                 sprintf(matname, "%s_mp%d_pkt%d.mat", argv[1], i+1, y+1);
                 FILE *mat_final = fopen(matname, "rb");
