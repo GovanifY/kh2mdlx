@@ -434,16 +434,18 @@ int main(int argc, char* argv[]){
 
         unsigned int old_mp=0;
         for(int i=0; i<mesh_nmb;i++){
+            unsigned int subp_off[vifpkt[i]];
             const aiMesh& mesh = *scene->mMeshes[i];
             if(old_mp){
                 unsigned int cur_pos = ftell(mdl)-0x90;
-                fseek(mdl, old_mp, SEEK_SET);
+                fseek(mdl, old_mp+0x0C, SEEK_SET);
                 fwrite(&cur_pos, 1, sizeof(cur_pos), mdl);
-                fseek(mdl, cur_pos, SEEK_SET);
+                fseek(mdl, cur_pos+0x90, SEEK_SET);
             }
             old_mp=ftell(mdl);
+            unsigned int mph = ftell(mdl);
             struct mdl_header* head = (mdl_header*)malloc(sizeof(struct mdl_header));
-            head->nmb=3;
+            head->nmb=3+i;
             head->res1=0;
             head->res2=0;
             // this is where old_mp writes for the old packet
@@ -459,8 +461,42 @@ int main(int argc, char* argv[]){
             head->unk2=0;
             fwrite(head , 1 , sizeof(struct mdl_header) , mdl);
 
+
+            for(int y=0; y<mesh.mNumBones;y++){
+
+
+                unsigned int cur_pos = ftell(mdl);
+                fseek(mdl, mph, SEEK_SET);
+                head->bone_off=cur_pos-0x90;
+                fwrite(head , 1 , sizeof(struct mdl_header) , mdl);
+                fseek(mdl, cur_pos, SEEK_SET);
+
+                struct bone_entry* bone = (bone_entry*)malloc(sizeof(struct bone_entry));
+                bone->idx=y;
+                bone->res1=0;
+                // FIXME: write correctly parent and coordinates absolutely!!!
+                bone->parent=0;
+                bone->res2=-1;
+                bone->unk1=0;
+                bone->sca_x=1;
+                bone->sca_y=1;
+                bone->sca_z=1;
+                bone->sca_w=1;
+                bone->rot_x=1;
+                bone->rot_y=1;
+                bone->rot_z=1;
+                bone->rot_w=1;
+                bone->trans_x=1;
+                bone->trans_y=1;
+                bone->trans_z=1;
+                bone->trans_w=1;
+                fwrite(bone , 1 , sizeof(struct bone_entry) , mdl);
+            }
+            
+
             for(int y=0; y<vifpkt[i]; y++){
                 // write subheader here!
+                subp_off[y]=ftell(mdl);
                 struct mdl_subpart_header* subhead = (mdl_subpart_header*)malloc(sizeof(struct mdl_subpart_header));
                 // TODO: verify what those unknowns are! 
                 // we do not have any offset yet so we just blank out everything
@@ -475,32 +511,6 @@ int main(int argc, char* argv[]){
                 fwrite(subhead , 1 , sizeof(struct mdl_subpart_header) , mdl);
 
             }
-
-            // TOFIX: verify organization of all of those parts!!
-            for(int y=0; y<mesh.mNumBones;y++){
-
-                struct bone_entry* bone = (bone_entry*)malloc(sizeof(struct bone_entry));
-                bone->idx=y;
-                bone->res1=0;
-                // FIXME: write correctly parent and coordinates absolutely!!!
-                bone->parent=0;
-                bone->res2=-1;
-                bone->unk1=0;
-                bone->sca_x=0;
-                bone->sca_y=0;
-                bone->sca_z=0;
-                bone->sca_w=0;
-                bone->rot_x=0;
-                bone->rot_y=0;
-                bone->rot_z=0;
-                bone->rot_w=0;
-                bone->trans_x=0;
-                bone->trans_y=0;
-                bone->trans_z=0;
-                bone->trans_w=0;
-                fwrite(bone , 1 , sizeof(struct bone_entry) , mdl);
-            }
-            
             for(int y=0; y<vifpkt[i]; y++){
                 char *kh2vname = (char*)malloc(PATH_MAX*sizeof(char));
                 sprintf(kh2vname, "%s_mp%d_pkt%d.kh2v", argv[1], i+1, y+1);
