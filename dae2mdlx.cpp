@@ -159,7 +159,7 @@ struct DMA {
 };
                     
 
-void write_packet(int vert_count, int bone_count, int face_count, int bones_drawn[], int faces_drawn[], int vertices_drawn[], int mp, int vifpkt, const aiMesh& mesh, char *name, int last){
+void write_packet(int vert_count, int bone_count, int face_count, int bones_drawn[], int faces_drawn[], int vertices_drawn[], int mp, int vifpkt, const aiMesh& mesh, char *name, int last, int bones_prec[]){
  
                     // should be enough chars for a lifetime
                     char *filename = (char*)malloc(PATH_MAX*sizeof(char));
@@ -265,14 +265,13 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                     fseek(kh2v, 0x24, SEEK_SET);
                     char mat_vif_off;
                     fread(&mat_vif_off, 4, 1, kh2v);
-                    fseek(kh2v, 0x18, SEEK_SET);
+                    fseek(kh2v, 0x44, SEEK_SET);
                     int mat_cnt;
                     fread(&mat_cnt, sizeof(int), 1, kh2v);
 
 
                     remove(filename);
-                   
-                     FILE *dma_file=fopen(dmaname, "wb");
+                    FILE *dma_file=fopen(dmaname, "wb");
                     struct DMA *dma_entry=(DMA*)malloc(sizeof(struct DMA));
                     fseek(kh2v, 0x0, SEEK_END);
                     dma_entry->vif_len = ftell(kh2v)/16;
@@ -286,9 +285,7 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                     for(int i=0; i<bone_count; i++){
                         dma_entry->vif_len = 4;
                         dma_entry->res1 = 0x3000;
-                        // we don't know yet where in the final file our packet will
-                        // end up so we blank it out for now.
-                        dma_entry->vif_off=bones_drawn[i];
+                        dma_entry->vif_off=bones_drawn[i]+bones_prec[i];
                         unsigned char vif_inst[] = {0x01, 0x01, 0x00, 0x01, 0x00, 0x80, 0x04, 0x6C};
                         vif_inst[4]=mat_vif_off+(i*4);
                         fwrite(dma_entry , 1 , sizeof(struct DMA) , dma_file);
@@ -299,7 +296,10 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
 
                     FILE *mat_file=fopen(matname, "wb");
                     fwrite(&mat_cnt, 1, sizeof(mat_cnt), mat_file); 
-                    for(int i=0; i<bone_count; i++){ fwrite(&bones_drawn[i], 1, sizeof(bones_drawn[i]), mat_file); }
+                    for(int i=0; i<bone_count; i++){ 
+                        int bones_new=bones_drawn[i]+bones_prec[mp-1]; 
+                        printf("original bone: %d, new: %d\n", bones_drawn[i], bones_new);
+                        fwrite(&bones_new, 1, sizeof(bones_new), mat_file); }
                     int end_mat=-1;
                     if(last){end_mat = 0;}
                     fwrite(&end_mat, 1, sizeof(end_mat), mat_file);
@@ -342,6 +342,9 @@ int main(int argc, char* argv[]){
         unsigned int mesh_nmb= scene->mNumMeshes;
         int vifpkt[mesh_nmb];
         printf("Number of meshes: %d\n", mesh_nmb);
+        int bones_prec[mesh_nmb];
+        for(int z=0;z<mesh_nmb;z++){if(z==0){bones_prec[z]=0;}else{ const aiMesh& mesh = *scene->mMeshes[z-1]; bones_prec[z]=(mesh.mNumBones)+bones_prec[z-1];}}
+        for(int z=0;z<mesh_nmb;z++){printf("%d, ", bones_prec[z]);}
         for(int i=0; i<mesh_nmb;i++){
             
             vifpkt[i]=1;
@@ -409,11 +412,11 @@ int main(int argc, char* argv[]){
                         }
                         if(tmp_check==0){vertices_drawn[vert_count]=mesh.mFaces[y].mIndices[2]; vert_count++;}
 
-                        if(y==mesh.mNumFaces-1){write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt[i], mesh, argv[1], 1);}
+                        if(y==mesh.mNumFaces-1){write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt[i], mesh, argv[1], 1, bones_prec);}
 
                   }
                   else{
-                      write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt[i],  mesh, argv[1], 0);
+                      write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt[i],  mesh, argv[1], 0, bones_prec);
                         y--; vifpkt[i]++; face_count=0; bone_count=0; vert_count=0;
                         for(int z=0;z<mesh.mNumVertices;z++){vertices_drawn[z]=0;}
                         for(int z=0;z<mesh.mNumBones;z++){bones_drawn[z]=0;}
@@ -430,48 +433,42 @@ int main(int argc, char* argv[]){
         // the actual model by assembling all of them together
         // write kh2 dma in-game header
 		for (int i=0; i<0x90;i++){fwrite(empty , 1 , sizeof(empty) , mdl);}
-
-
-        unsigned int old_mp=0;
-        for(int i=0; i<mesh_nmb;i++){
-            unsigned int subp_off[vifpkt[i]];
-            unsigned int vifp_off[vifpkt[i]];
+        int bones_nmb=0;
+        for(int i=0; i<mesh_nmb; i++){
             const aiMesh& mesh = *scene->mMeshes[i];
-            if(old_mp){
-                unsigned int cur_pos = ftell(mdl)-0x90;
-                fseek(mdl, old_mp+0x0C, SEEK_SET);
-                fwrite(&cur_pos, 1, sizeof(cur_pos), mdl);
-                fseek(mdl, cur_pos+0x90, SEEK_SET);
-            }
-            old_mp=ftell(mdl);
+            bones_nmb+=mesh.mNumBones;
+        }
+
+
+            unsigned int subp_off[mesh_nmb];
             unsigned int mph = ftell(mdl);
             struct mdl_header* head = (mdl_header*)malloc(sizeof(struct mdl_header));
-            head->nmb=3+i;
+            head->nmb=3;
             head->res1=0;
             head->res2=0;
-            // this is where old_mp writes for the old packet
+            // this is where the shadow model will get written 
             head->next_mdl_header=0;
-            head->bone_cnt=mesh.mNumBones;
+            head->bone_cnt=bones_nmb;
             head->unk1=0;
             // we need to write this once we generated the bone tables
             head->bone_off=0;
             // as this table is unused nobody cares and we blank it out, saves
             // space
             head->unk_off=0;
-            head->mdl_subpart_cnt=vifpkt[i];
+            head->mdl_subpart_cnt=mesh_nmb;
             head->unk2=0;
             fwrite(head , 1 , sizeof(struct mdl_header) , mdl);
 
             
 
-            for(int y=0; y<vifpkt[i]; y++){
+            for(int y=0; y<mesh_nmb; y++){
                 // write subheader here!
                 subp_off[y]=ftell(mdl);
                 struct mdl_subpart_header* subhead = (mdl_subpart_header*)malloc(sizeof(struct mdl_subpart_header));
                 // TODO: verify what those unknowns are! 
                 // we do not have any offset yet so we just blank out everything
                 subhead->unk1=0;
-                subhead->texture_idx=i;
+                subhead->texture_idx=y;
                 subhead->unk2=0;
                 subhead->unk3=0;
                 subhead->DMA_off=0;
@@ -483,115 +480,130 @@ int main(int argc, char* argv[]){
             }
 
 
-            for(int y=0; y<mesh.mNumBones;y++){
+
+                    // we are writing the bone table offset in the model header
+                    unsigned int cur_pos = ftell(mdl);
+                    fseek(mdl, mph, SEEK_SET);
+                    head->bone_off=cur_pos-0x90;
+                    fwrite(head , 1 , sizeof(struct mdl_header) , mdl);
+                    fseek(mdl, cur_pos, SEEK_SET);
+
+            for(int i=0; i<mesh_nmb; i++){
+                const aiMesh& mesh = *scene->mMeshes[i];
+                for(int y=0; y<mesh.mNumBones;y++){
 
 
-                unsigned int cur_pos = ftell(mdl);
-                fseek(mdl, mph, SEEK_SET);
-                head->bone_off=cur_pos-0x90;
-                fwrite(head , 1 , sizeof(struct mdl_header) , mdl);
-                fseek(mdl, cur_pos, SEEK_SET);
-
-                struct bone_entry* bone = (bone_entry*)malloc(sizeof(struct bone_entry));
-                bone->idx=y;
-                bone->res1=0;
-                // FIXME: write correctly parent and coordinates absolutely!!!
-                bone->parent=0;
-                bone->res2=-1;
-                bone->unk1=0;
-                bone->sca_x=1;
-                bone->sca_y=1;
-                bone->sca_z=1;
-                bone->sca_w=1;
-                bone->rot_x=1;
-                bone->rot_y=1;
-                bone->rot_z=1;
-                bone->rot_w=1;
-                bone->trans_x=1;
-                bone->trans_y=1;
-                bone->trans_z=1;
-                bone->trans_w=1;
-                fwrite(bone , 1 , sizeof(struct bone_entry) , mdl);
+                    
+                    struct bone_entry* bone = (bone_entry*)malloc(sizeof(struct bone_entry));
+                    bone->idx=y+bones_prec[i];
+                    bone->res1=0;
+                    // FIXME: write correctly parent and coordinates absolutely!!!
+                    bone->parent=0;
+                    bone->res2=-1;
+                    bone->unk1=0;
+                    bone->sca_x=1;
+                    bone->sca_y=1;
+                    bone->sca_z=1;
+                    bone->sca_w=1;
+                    bone->rot_x=1;
+                    bone->rot_y=1;
+                    bone->rot_z=1;
+                    bone->rot_w=1;
+                    bone->trans_x=1;
+                    bone->trans_y=1;
+                    bone->trans_z=1;
+                    bone->trans_w=1;
+                    fwrite(bone , 1 , sizeof(struct bone_entry) , mdl);
+                }
             }
 
-            for(int y=0; y<vifpkt[i]; y++){
 
-                vifp_off[y]=ftell(mdl)-0x90;
-                char *kh2vname = (char*)malloc(PATH_MAX*sizeof(char));
-                sprintf(kh2vname, "%s_mp%d_pkt%d.kh2v", argv[1], i+1, y+1);
-                FILE *vif_final = fopen(kh2vname, "rb");
+            for(int i=0; i<mesh_nmb; i++){
+                unsigned int vifp_off[mesh_nmb*vifpkt[i]];
+                int dma_check=1;
+                int mat_check=1;
+                for(int y=0; y<vifpkt[i]; y++){
 
-                size_t n, m;
-                unsigned char buff[8192];
-                do {
-                    n = fread(buff, 1, sizeof buff, vif_final);
-                    if (n) m = fwrite(buff, 1, n, mdl);
-                    else   m = 0;
-                } while ((n > 0) && (n == m));
+                    vifp_off[y]=ftell(mdl)-0x90;
+                    char *kh2vname = (char*)malloc(PATH_MAX*sizeof(char));
+                    sprintf(kh2vname, "%s_mp%d_pkt%d.kh2v", argv[1], i+1, y+1);
+                    FILE *vif_final = fopen(kh2vname, "rb");
 
-                fclose(vif_final);
-                remove(kh2vname);
-            }
+                    size_t n, m;
+                    unsigned char buff[8192];
+                    do {
+                        n = fread(buff, 1, sizeof buff, vif_final);
+                        if (n) m = fwrite(buff, 1, n, mdl);
+                        else   m = 0;
+                    } while ((n > 0) && (n == m));
 
-            for(int y=0; y<vifpkt[i]; y++){
+                    fclose(vif_final);
+                    remove(kh2vname);
+                }
 
-                unsigned int cur_pos = ftell(mdl);
-                fseek(mdl, subp_off[y]+0x10, SEEK_SET);
-                int dmahdr = cur_pos-0x90;
-                fwrite(&dmahdr , 1 , sizeof(dmahdr) , mdl);
-                fseek(mdl, cur_pos, SEEK_SET);
+                for(int y=0; y<vifpkt[i]; y++){
+                    if(dma_check){
+                        unsigned int cur_pos = ftell(mdl);
+                        fseek(mdl, subp_off[i]+0x10, SEEK_SET);
+                        int dmahdr = cur_pos-0x90;
+                        fwrite(&dmahdr , 1 , sizeof(dmahdr) , mdl);
+                        fseek(mdl, cur_pos, SEEK_SET);
+                        dma_check=0;
+                    }
 
-                char *dmaname = (char*)malloc(PATH_MAX*sizeof(char));
-                sprintf(dmaname, "%s_mp%d_pkt%d.dma", argv[1], i+1, y+1);
-                
-                FILE *dma_final = fopen(dmaname, "rb+");
-                fseek(dma_final, 0x4, SEEK_SET);
-                fwrite(&vifp_off[y], 1, sizeof(vifp_off[y]), dma_final);
-                fclose(dma_final);
-                dma_final = fopen(dmaname, "rb");
+                    char *dmaname = (char*)malloc(PATH_MAX*sizeof(char));
+                    sprintf(dmaname, "%s_mp%d_pkt%d.dma", argv[1], i+1, y+1);
+                    
+                    FILE *dma_final = fopen(dmaname, "rb+");
+                    fseek(dma_final, 0x4, SEEK_SET);
+                    fwrite(&vifp_off[y], 1, sizeof(vifp_off[y]), dma_final);
+                    fclose(dma_final);
+                    dma_final = fopen(dmaname, "rb");
 
 
-                size_t n, m;
-                unsigned char buff[8192];
-                do {
-                    n = fread(buff, 1, sizeof buff, dma_final);
-                    if (n) m = fwrite(buff, 1, n, mdl);
-                    else   m = 0;
-                } while ((n > 0) && (n == m));
+                    size_t n, m;
+                    unsigned char buff[8192];
+                    do {
+                        n = fread(buff, 1, sizeof buff, dma_final);
+                        if (n) m = fwrite(buff, 1, n, mdl);
+                        else   m = 0;
+                    } while ((n > 0) && (n == m));
 
-                fclose(dma_final);
-                remove(dmaname);
-            }
+                    fclose(dma_final);
+                    remove(dmaname);
+                }
 
-            for(int y=0; y<vifpkt[i]; y++){
+                for(int y=0; y<vifpkt[i]; y++){
 
-                unsigned int cur_pos = ftell(mdl);
-                fseek(mdl, subp_off[y]+0x14, SEEK_SET);
-                int mathdr = cur_pos-0x90;
-                fwrite(&mathdr , 1 , sizeof(mathdr) , mdl);
-                fseek(mdl, cur_pos, SEEK_SET);
+                    if(mat_check){
+                        unsigned int cur_pos = ftell(mdl);
+                        fseek(mdl, subp_off[i]+0x14, SEEK_SET);
+                        int mathdr = cur_pos-0x90;
+                        fwrite(&mathdr , 1 , sizeof(mathdr) , mdl);
+                        fseek(mdl, cur_pos, SEEK_SET);
+                        mat_check=0;
+                    }
 
-                char *matname = (char*)malloc(PATH_MAX*sizeof(char));
-                sprintf(matname, "%s_mp%d_pkt%d.mat", argv[1], i+1, y+1);
-                FILE *mat_final = fopen(matname, "rb");
+                    char *matname = (char*)malloc(PATH_MAX*sizeof(char));
+                    sprintf(matname, "%s_mp%d_pkt%d.mat", argv[1], i+1, y+1);
+                    FILE *mat_final = fopen(matname, "rb");
 
-                size_t n, m;
-                unsigned char buff[8192];
-                do {
-                    n = fread(buff, 1, sizeof buff, mat_final);
-                    if (n) m = fwrite(buff, 1, n, mdl);
-                    else   m = 0;
-                } while ((n > 0) && (n == m));
+                    size_t n, m;
+                    unsigned char buff[8192];
+                    do {
+                        n = fread(buff, 1, sizeof buff, mat_final);
+                        if (n) m = fwrite(buff, 1, n, mdl);
+                        else   m = 0;
+                    } while ((n > 0) && (n == m));
 
-                fclose(mat_final);
-                remove(matname);
+                    fclose(mat_final);
+                    remove(matname);
+
+                }
                 while(ftell(mdl)%16!=0){fwrite(empty , 1 , sizeof(empty) , mdl);}
 
             }
-
-
             
-        }
 
 
         /*
