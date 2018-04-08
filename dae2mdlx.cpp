@@ -159,8 +159,7 @@ struct DMA {
 };
                     
 
-void write_packet(int vert_count, int bone_count, int face_count, int bones_drawn[], int faces_drawn[], int vertices_drawn[], int mp, int vifpkt, const aiMesh& mesh, char *name, int last, int bones_prec[]){
- 
+void write_packet(int vert_count, int bone_count, int face_count, int bones_drawn[], int faces_drawn[], int vertices_drawn[], int mp, int vifpkt, const aiMesh& mesh, char *name, int last, int bones_prec[], int mat_entries[]){
                     // should be enough chars for a lifetime
                     char *filename = (char*)malloc(PATH_MAX*sizeof(char));
                     sprintf(filename, "%s_mp%d_pkt%d.obj", name, mp, vifpkt);
@@ -266,8 +265,8 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                     char mat_vif_off;
                     fread(&mat_vif_off, 4, 1, kh2v);
                     fseek(kh2v, 0x44, SEEK_SET);
-                    int mat_cnt;
-                    fread(&mat_cnt, sizeof(int), 1, kh2v);
+                    int mat_cnt=0;
+                    // fread(&mat_cnt, sizeof(int), 1, kh2v);
 
 
                     remove(filename);
@@ -295,14 +294,20 @@ void write_packet(int vert_count, int bone_count, int face_count, int bones_draw
                     fwrite(end_dma , 1 , sizeof(end_dma) , dma_file);
 
                     FILE *mat_file=fopen(matname, "wb");
-                    fwrite(&mat_cnt, 1, sizeof(mat_cnt), mat_file); 
+                    // the count of mat entries, we need to modify that!
+                    if(vifpkt==1){fwrite(&mat_cnt, 1, sizeof(mat_cnt), mat_file); }
                     for(int i=0; i<bone_count; i++){ 
                         int bones_new=bones_drawn[i]+bones_prec[mp-1]; 
                         printf("original bone: %d, new: %d\n", bones_drawn[i], bones_new);
-                        fwrite(&bones_new, 1, sizeof(bones_new), mat_file); }
+                        fwrite(&bones_new, 1, sizeof(bones_new), mat_file);
+                        mat_entries++;
+                    }
+
                     int end_mat=-1;
                     if(last){end_mat = 0;}
                     fwrite(&end_mat, 1, sizeof(end_mat), mat_file);
+
+                    mat_entries++;
                     
                     fclose(dma_file);
                     fclose(mat_file);
@@ -343,6 +348,7 @@ int main(int argc, char* argv[]){
         int vifpkt[mesh_nmb];
         printf("Number of meshes: %d\n", mesh_nmb);
         int bones_prec[mesh_nmb];
+        int mat_entries[mesh_nmb];
         for(int z=0;z<mesh_nmb;z++){if(z==0){bones_prec[z]=0;}else{ const aiMesh& mesh = *scene->mMeshes[z-1]; bones_prec[z]=(mesh.mNumBones)+bones_prec[z-1];}}
         for(int z=0;z<mesh_nmb;z++){printf("%d, ", bones_prec[z]);}
         for(int i=0; i<mesh_nmb;i++){
@@ -412,11 +418,11 @@ int main(int argc, char* argv[]){
                         }
                         if(tmp_check==0){vertices_drawn[vert_count]=mesh.mFaces[y].mIndices[2]; vert_count++;}
 
-                        if(y==mesh.mNumFaces-1){write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt[i], mesh, argv[1], 1, bones_prec);}
+                        if(y==mesh.mNumFaces-1){write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt[i], mesh, argv[1], 1, bones_prec, mat_entries);}
 
                   }
                   else{
-                      write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt[i],  mesh, argv[1], 0, bones_prec);
+                      write_packet(vert_count, bone_count, face_count, bones_drawn, faces_drawn, vertices_drawn, i+1, vifpkt[i],  mesh, argv[1], 0, bones_prec, mat_entries);
                         y--; vifpkt[i]++; face_count=0; bone_count=0; vert_count=0;
                         for(int z=0;z<mesh.mNumVertices;z++){vertices_drawn[z]=0;}
                         for(int z=0;z<mesh.mNumBones;z++){bones_drawn[z]=0;}
@@ -570,10 +576,14 @@ int main(int argc, char* argv[]){
                     } while ((n > 0) && (n == m));
 
                     fclose(dma_final);
-                    remove(dmaname);
+                    // remove(dmaname);
                 }
 
                 for(int y=0; y<vifpkt[i]; y++){
+
+                    char *matname = (char*)malloc(PATH_MAX*sizeof(char));
+                    sprintf(matname, "%s_mp%d_pkt%d.mat", argv[1], i+1, y+1);
+                    FILE *mat_final;
 
                     if(mat_check){
                         unsigned int cur_pos = ftell(mdl);
@@ -581,12 +591,17 @@ int main(int argc, char* argv[]){
                         int mathdr = cur_pos-0x90;
                         fwrite(&mathdr , 1 , sizeof(mathdr) , mdl);
                         fseek(mdl, cur_pos, SEEK_SET);
+
+                        printf("Mat entries: %d\n", mat_entries[i]);
+                        mat_final = fopen(matname, "rb+");
+                        fwrite(&mat_entries[i], 1, sizeof(mat_entries[i]), mat_final);
+                        fclose(mat_final);
+
                         mat_check=0;
                     }
 
-                    char *matname = (char*)malloc(PATH_MAX*sizeof(char));
-                    sprintf(matname, "%s_mp%d_pkt%d.mat", argv[1], i+1, y+1);
-                    FILE *mat_final = fopen(matname, "rb");
+                    mat_final = fopen(matname, "rb");
+                    
 
                     size_t n, m;
                     unsigned char buff[8192];
@@ -597,7 +612,7 @@ int main(int argc, char* argv[]){
                     } while ((n > 0) && (n == m));
 
                     fclose(mat_final);
-                    remove(matname);
+                   // remove(matname);
 
                 }
                 while(ftell(mdl)%16!=0){fwrite(empty , 1 , sizeof(empty) , mdl);}
