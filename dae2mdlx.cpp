@@ -308,7 +308,8 @@ void write_packet(int vert_count, int bone_count, int face_count,
     for (int i = 0; i < bone_count; i++) {
         dma_entry->vif_len = 4;
         dma_entry->res1 = 0x3000;
-        dma_entry->vif_off = bones_drawn[i] + bones_prec[i];
+
+        dma_entry->vif_off = bones_drawn[i] + bones_prec[mp - 1];
         unsigned char vif_inst[] = { 0x01, 0x01, 0x00, 0x01,
                                      0x00, 0x80, 0x04, 0x6C };
         vif_inst[4] = mat_vif_off + (i * 4);
@@ -386,9 +387,6 @@ int main(int argc, char *argv[]) {
             const aiMesh &mesh = *scene->mMeshes[z - 1];
             bones_prec[z] = (mesh.mNumBones) + bones_prec[z - 1];
         }
-    }
-    for (unsigned int z = 0; z < mesh_nmb; z++) {
-        printf("%d, ", bones_prec[z]);
     }
     for (unsigned int i = 0; i < mesh_nmb; i++) {
 
