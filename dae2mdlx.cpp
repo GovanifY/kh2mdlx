@@ -591,6 +591,7 @@ int main(int argc, char *argv[]) {
             bone->parent = 0;
             bone->res2 = -1;
             bone->unk1 = 0;
+            bone->unk2 = 0;
             bone->sca_x = 1;
             bone->sca_y = 1;
             bone->sca_z = 1;
