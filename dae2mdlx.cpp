@@ -159,9 +159,10 @@ struct DMA {
 };
 
 void write_packet(int vert_count, int bone_count, int face_count,
-                  int bones_drawn[], int faces_drawn[], int vertices_drawn[],
-                  int mp, int vifpkt, const aiMesh &mesh, char *name, int last,
-                  int bones_prec[], int mat_entries[]) {
+                  unsigned int bones_drawn[], int faces_drawn[],
+                  unsigned int vertices_drawn[], int mp, int vifpkt,
+                  const aiMesh &mesh, char *name, int last, int bones_prec[],
+                  int mat_entries[]) {
     // should be enough chars for a lifetime
     char *filename = (char *)malloc(PATH_MAX * sizeof(char));
     sprintf(filename, "%s_mp%d_pkt%d.obj", name, mp, vifpkt);
@@ -184,7 +185,7 @@ void write_packet(int vert_count, int bone_count, int face_count,
     for (int i = 0; i < bone_count; i++) {
         bone_to_vertex[i] = 0;
     }
-    int vert_new_order[vert_count];
+    unsigned int vert_new_order[vert_count];
     for (int i = 0; i < vert_count; i++) {
         vert_new_order[i] = 0;
     }
@@ -193,7 +194,8 @@ void write_packet(int vert_count, int bone_count, int face_count,
     // we check the number of vertices assigned to each bone
     // in this packet, and reorganize them per bone
     for (int d = 0; d < bone_count; d++) {
-        for (int e = 0; e < mesh.mBones[bones_drawn[d]]->mNumWeights; e++) {
+        for (unsigned int e = 0; e < mesh.mBones[bones_drawn[d]]->mNumWeights;
+             e++) {
             for (int f = 0; f < vert_count; f++) {
                 if (mesh.mBones[bones_drawn[d]]->mWeights[e].mVertexId ==
                     vertices_drawn[f]) {
@@ -205,7 +207,8 @@ void write_packet(int vert_count, int bone_count, int face_count,
 
     // we now sort vertices per bone order
     for (int d = 0; d < bone_count; d++) {
-        for (int e = 0; e < mesh.mBones[bones_drawn[d]]->mNumWeights; e++) {
+        for (unsigned int e = 0; e < mesh.mBones[bones_drawn[d]]->mNumWeights;
+             e++) {
             for (int f = 0; f < vert_count; f++) {
                 int tmp_check = 0;
                 if (mesh.mBones[bones_drawn[d]]->mWeights[e].mVertexId ==
@@ -373,10 +376,10 @@ int main(int argc, char *argv[]) {
     printf("Number of meshes: %d\n", mesh_nmb);
     int bones_prec[mesh_nmb];
     int mat_entries[mesh_nmb];
-    for (int z = 0; z < mesh_nmb; z++) {
+    for (unsigned int z = 0; z < mesh_nmb; z++) {
         mat_entries[z] = 0;
     }
-    for (int z = 0; z < mesh_nmb; z++) {
+    for (unsigned int z = 0; z < mesh_nmb; z++) {
         if (z == 0) {
             bones_prec[z] = 0;
         } else {
@@ -384,10 +387,10 @@ int main(int argc, char *argv[]) {
             bones_prec[z] = (mesh.mNumBones) + bones_prec[z - 1];
         }
     }
-    for (int z = 0; z < mesh_nmb; z++) {
+    for (unsigned int z = 0; z < mesh_nmb; z++) {
         printf("%d, ", bones_prec[z]);
     }
-    for (int i = 0; i < mesh_nmb; i++) {
+    for (unsigned int i = 0; i < mesh_nmb; i++) {
 
         vifpkt[i] = 1;
         int vert_count = 0;
@@ -395,16 +398,16 @@ int main(int argc, char *argv[]) {
         int bone_count = 0;
         const aiMesh &mesh = *scene->mMeshes[i];
         // for some reason those arrays aren't initialized as 0...?
-        int vertices_drawn[mesh.mNumVertices];
-        for (int z = 0; z < mesh.mNumVertices; z++) {
+        unsigned int vertices_drawn[mesh.mNumVertices];
+        for (unsigned int z = 0; z < mesh.mNumVertices; z++) {
             vertices_drawn[z] = 0;
         }
-        int bones_drawn[mesh.mNumBones];
-        for (int z = 0; z < mesh.mNumBones; z++) {
+        unsigned int bones_drawn[mesh.mNumBones];
+        for (unsigned int z = 0; z < mesh.mNumBones; z++) {
             bones_drawn[z] = 0;
         }
         int faces_drawn[mesh.mNumFaces];
-        for (int z = 0; z < mesh.mNumFaces; z++) {
+        for (unsigned int z = 0; z < mesh.mNumFaces; z++) {
             faces_drawn[z] = 0;
         }
         printf("Bone for MP %d : %d\n", i + 1, mesh.mNumBones);
@@ -412,7 +415,7 @@ int main(int argc, char *argv[]) {
         // we are writing a custom interlaced, bone-supporting obj here,
         // don't assume everything is following the obj standard!
         // printf("Generating Model Part %d, packet %d\n", i+1, vifpkt);
-        for (int y = 0; y < mesh.mNumFaces; y++) {
+        for (unsigned int y = 0; y < mesh.mNumFaces; y++) {
 
             // we make the biggest vif packet, possible, for this, here
             // is the size that each type of entry takes:
@@ -434,8 +437,9 @@ int main(int argc, char *argv[]) {
                 // %d\n",mesh.mFaces[y].mIndices[0],mesh.mFaces[y].mIndices[1],
                 // mesh.mFaces[y].mIndices[2]);
                 int tmp_check = 0;
-                for (int d = 0; d < mesh.mNumBones; d++) {
-                    for (int e = 0; e < mesh.mBones[d]->mNumWeights; e++) {
+                for (unsigned int d = 0; d < mesh.mNumBones; d++) {
+                    for (unsigned int e = 0; e < mesh.mBones[d]->mNumWeights;
+                         e++) {
                         tmp_check = 0;
                         if (mesh.mBones[d]->mWeights[e].mVertexId ==
                                 mesh.mFaces[y].mIndices[0] ||
@@ -506,13 +510,13 @@ int main(int argc, char *argv[]) {
                 face_count = 0;
                 bone_count = 0;
                 vert_count = 0;
-                for (int z = 0; z < mesh.mNumVertices; z++) {
+                for (unsigned int z = 0; z < mesh.mNumVertices; z++) {
                     vertices_drawn[z] = 0;
                 }
-                for (int z = 0; z < mesh.mNumBones; z++) {
+                for (unsigned int z = 0; z < mesh.mNumBones; z++) {
                     bones_drawn[z] = 0;
                 }
-                for (int z = 0; z < mesh.mNumFaces; z++) {
+                for (unsigned int z = 0; z < mesh.mNumFaces; z++) {
                     faces_drawn[z] = 0;
                 }
                 // printf("Generating Model Part %d, packet %d\n", i+1, vifpkt);
@@ -530,7 +534,7 @@ int main(int argc, char *argv[]) {
         fwrite(empty, 1, sizeof(empty), mdl);
     }
     int bones_nmb = 0;
-    for (int i = 0; i < mesh_nmb; i++) {
+    for (unsigned int i = 0; i < mesh_nmb; i++) {
         const aiMesh &mesh = *scene->mMeshes[i];
         bones_nmb += mesh.mNumBones;
     }
@@ -554,7 +558,7 @@ int main(int argc, char *argv[]) {
     head->unk2 = 0;
     fwrite(head, 1, sizeof(struct mdl_header), mdl);
 
-    for (int y = 0; y < mesh_nmb; y++) {
+    for (unsigned int y = 0; y < mesh_nmb; y++) {
         // write subheader here!
         subp_off[y] = ftell(mdl);
         struct mdl_subpart_header *subhead =
@@ -579,9 +583,9 @@ int main(int argc, char *argv[]) {
     fwrite(head, 1, sizeof(struct mdl_header), mdl);
     fseek(mdl, cur_pos, SEEK_SET);
 
-    for (int i = 0; i < mesh_nmb; i++) {
+    for (unsigned int i = 0; i < mesh_nmb; i++) {
         const aiMesh &mesh = *scene->mMeshes[i];
-        for (int y = 0; y < mesh.mNumBones; y++) {
+        for (unsigned int y = 0; y < mesh.mNumBones; y++) {
 
             struct bone_entry *bone =
                 (bone_entry *)malloc(sizeof(struct bone_entry));
@@ -608,7 +612,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    for (int i = 0; i < mesh_nmb; i++) {
+    for (unsigned int i = 0; i < mesh_nmb; i++) {
         unsigned int vifp_off[mesh_nmb * vifpkt[i]];
         int dma_check = 1;
         int mat_check = 1;
