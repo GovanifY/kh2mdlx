@@ -624,22 +624,26 @@ int main(int argc, char *argv[]) {
             bone->idx = y + bones_prec[i];
             bone->res1 = 0;
             // FIXME: write correctly parent and coordinates absolutely!!!
-            bone->parent = -1;
+            if (y == 0) {
+                bone->parent = -1;
+            } else {
+                bone->parent = 0;
+            }
             bone->res2 = -1;
             bone->unk1 = 0;
             bone->unk2 = 0;
             bone->sca_x = 1;
             bone->sca_y = 1;
             bone->sca_z = 1;
-            bone->sca_w = 1;
-            bone->rot_x = 1;
-            bone->rot_y = 1;
-            bone->rot_z = 1;
-            bone->rot_w = 1;
-            bone->trans_x = 1;
-            bone->trans_y = 1;
-            bone->trans_z = 1;
-            bone->trans_w = 1;
+            bone->sca_w = 0;
+            bone->rot_x = 0;
+            bone->rot_y = 0;
+            bone->rot_z = 0;
+            bone->rot_w = 0;
+            bone->trans_x = 0;
+            bone->trans_y = 0;
+            bone->trans_z = 0;
+            bone->trans_w = 0;
             fwrite(bone, 1, sizeof(struct bone_entry), mdl);
         }
     }
