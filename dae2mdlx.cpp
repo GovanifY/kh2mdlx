@@ -339,8 +339,10 @@ void write_packet(int vert_count, int bone_count, int face_count,
     }
     fwrite(&end_mat, 1, sizeof(end_mat), mat_file);
 
-    printf("MP %d, incremeting number of mat entries\n", mp);
-    mat_entries[mp - 1]++;
+    if (!last) {
+        printf("MP %d, incremeting number of mat entries\n", mp);
+        mat_entries[mp - 1]++;
+    }
 
     fclose(dma_file);
     fclose(mat_file);
@@ -715,7 +717,7 @@ int main(int argc, char *argv[]) {
             if (mat_check) {
                 unsigned int cur_pos = ftell(mdl);
                 fseek(mdl, subp_off[i] + 0x14, SEEK_SET);
-                int mathdr = cur_pos - 0x90;
+                unsigned int mathdr = cur_pos - 0x90;
                 fwrite(&mathdr, 1, sizeof(mathdr), mdl);
                 fseek(mdl, cur_pos, SEEK_SET);
 
