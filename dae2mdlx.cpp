@@ -134,8 +134,7 @@ struct mdl_subpart_header {
 struct bone_entry {
     unsigned short idx;
     unsigned short res1;
-    short parent;
-    short res2;
+    int parent;
     unsigned int unk1;
     unsigned int unk2;
     float sca_x;
@@ -626,12 +625,7 @@ int main(int argc, char *argv[]) {
             bone->idx = y + bones_prec[i];
             bone->res1 = 0;
             // FIXME: write correctly parent and coordinates absolutely!!!
-            if (y == 0) {
-                bone->parent = -1;
-            } else {
-                bone->parent = 0;
-            }
-            bone->res2 = -1;
+            bone->parent = -1;
             bone->unk1 = 0;
             bone->unk2 = 0;
             bone->sca_x = 1;
