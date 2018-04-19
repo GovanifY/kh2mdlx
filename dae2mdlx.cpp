@@ -127,7 +127,7 @@ struct mdl_subpart_header {
     unsigned int unk3;
     unsigned int DMA_off;
     unsigned int mat_off;
-    unsigned int unk4;
+    unsigned int DMA_size;
     unsigned int unk5;
 };
 
@@ -161,7 +161,7 @@ void write_packet(int vert_count, int bone_count, int face_count,
                   unsigned int bones_drawn[], int faces_drawn[],
                   unsigned int vertices_drawn[], int mp, int vifpkt,
                   const aiMesh &mesh, char *name, int last, int bones_prec[],
-                  int mat_entries[]) {
+                  int mat_entries[], int dma_entries[]) {
     // should be enough chars for a lifetime
     char *filename = (char *)malloc(PATH_MAX * sizeof(char));
     sprintf(filename, "%s_mp%d_pkt%d.obj", name, mp, vifpkt);
@@ -284,6 +284,7 @@ void write_packet(int vert_count, int bone_count, int face_count,
     sprintf(makepkt, "obj2kh2v \"%s\"", filename);
     system(makepkt);
 
+    // scanf("%d\n");
     FILE *kh2v = fopen(kh2vname, "rb");
     fseek(kh2v, 0x24, SEEK_SET);
     char mat_vif_off;
@@ -293,6 +294,7 @@ void write_packet(int vert_count, int bone_count, int face_count,
     // fread(&mat_cnt, sizeof(int), 1, kh2v);
 
     remove(filename);
+
     FILE *dma_file = fopen(dmaname, "wb");
     struct DMA *dma_entry = (DMA *)malloc(sizeof(struct DMA));
     fseek(kh2v, 0x0, SEEK_END);
@@ -314,10 +316,12 @@ void write_packet(int vert_count, int bone_count, int face_count,
         vif_inst[4] = mat_vif_off + (i * 4);
         fwrite(dma_entry, 1, sizeof(struct DMA), dma_file);
         fwrite(vif_inst, 1, sizeof(vif_inst), dma_file);
+        dma_entries[mp - 1]++;
     }
     char end_dma[] = { 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00,
                        0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00 };
     fwrite(end_dma, 1, sizeof(end_dma), dma_file);
+    dma_entries[mp - 1]++;
 
     FILE *mat_file = fopen(matname, "wb");
     // the count of mat entries, we need to modify that!
@@ -361,25 +365,33 @@ int main(int argc, char *argv[]) {
     mdl = fopen("test.kh2m", "wb");
 
     Assimp::Importer importer;
+    importer.SetPropertyInteger(
+        AI_CONFIG_PP_RVC_FLAGS,
+        aiComponent_NORMALS | aiComponent_TANGENTS_AND_BITANGENTS |
+            aiComponent_COLORS | aiComponent_LIGHTS | aiComponent_CAMERAS);
     const aiScene *scene = importer.ReadFile(
-        argv[1], aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
-                     aiProcess_SortByPType);
+        argv[1], aiProcess_Triangulate | aiProcess_RemoveComponent |
+                     aiProcess_JoinIdenticalVertices | aiProcess_SortByPType);
     if (!scene) {
         printf("error loading model!: %s", importer.GetErrorString());
         return -1;
     }
 
     /*Assimp::Exporter exporter;
-    const aiExportFormatDesc* format = exporter.GetExportFormatDescription(0);
-    exporter.Export(scene, "obj", "test.obj", scene->mFlags);*/
+    const aiExportFormatDesc *format = exporter.GetExportFormatDescription(0);
+    exporter.Export(scene, "fbx", "test.fbx", scene->mFlags);*/
 
     unsigned int mesh_nmb = scene->mNumMeshes;
     int vifpkt[mesh_nmb];
     printf("Number of meshes: %d\n", mesh_nmb);
     int bones_prec[mesh_nmb];
     int mat_entries[mesh_nmb];
+    int dma_entries[mesh_nmb];
     for (unsigned int z = 0; z < mesh_nmb; z++) {
         mat_entries[z] = 0;
+    }
+    for (unsigned int z = 0; z < mesh_nmb; z++) {
+        dma_entries[z] = 0;
     }
     for (unsigned int z = 0; z < mesh_nmb; z++) {
         if (z == 0) {
@@ -497,13 +509,14 @@ int main(int argc, char *argv[]) {
                     write_packet(vert_count, bone_count, face_count,
                                  bones_drawn, faces_drawn, vertices_drawn,
                                  i + 1, vifpkt[i], mesh, argv[1], 1, bones_prec,
-                                 mat_entries);
+                                 mat_entries, dma_entries);
                 }
 
             } else {
                 write_packet(vert_count, bone_count, face_count, bones_drawn,
                              faces_drawn, vertices_drawn, i + 1, vifpkt[i],
-                             mesh, argv[1], 0, bones_prec, mat_entries);
+                             mesh, argv[1], 0, bones_prec, mat_entries,
+                             dma_entries);
                 y--;
                 vifpkt[i]++;
                 face_count = 0;
@@ -570,7 +583,7 @@ int main(int argc, char *argv[]) {
         subhead->unk3 = 0;
         subhead->DMA_off = 0;
         subhead->mat_off = 0;
-        subhead->unk4 = 0;
+        subhead->DMA_size = 0;
         subhead->unk5 = 0;
         fwrite(subhead, 1, sizeof(struct mdl_subpart_header), mdl);
     }
@@ -670,19 +683,27 @@ int main(int argc, char *argv[]) {
         }
 
         for (int y = 0; y < vifpkt[i]; y++) {
+
+            char *dmaname = (char *)malloc(PATH_MAX * sizeof(char));
+            sprintf(dmaname, "%s_mp%d_pkt%d.dma", argv[1], i + 1, y + 1);
+            FILE *dma_final;
+
             if (dma_check) {
                 unsigned int cur_pos = ftell(mdl);
                 fseek(mdl, subp_off[i] + 0x10, SEEK_SET);
                 int dmahdr = cur_pos - 0x90;
                 fwrite(&dmahdr, 1, sizeof(dmahdr), mdl);
+
+                printf("Dma entries: %d\n", dma_entries[i]);
+                fseek(mdl, subp_off[i] + 0x18, SEEK_SET);
+                fwrite(&dma_entries[i], 1, sizeof(dma_entries[i]), mdl);
+
                 fseek(mdl, cur_pos, SEEK_SET);
                 dma_check = 0;
             }
 
-            char *dmaname = (char *)malloc(PATH_MAX * sizeof(char));
-            sprintf(dmaname, "%s_mp%d_pkt%d.dma", argv[1], i + 1, y + 1);
+            dma_final = fopen(dmaname, "rb+");
 
-            FILE *dma_final = fopen(dmaname, "rb+");
             fseek(dma_final, 0x4, SEEK_SET);
             fwrite(&vifp_off[y], 1, sizeof(vifp_off[y]), dma_final);
             fclose(dma_final);
