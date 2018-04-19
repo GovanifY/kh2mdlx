@@ -306,6 +306,7 @@ void write_packet(int vert_count, int bone_count, int face_count,
     char vif_empty[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     fwrite(dma_entry, 1, sizeof(struct DMA), dma_file);
     fwrite(vif_empty, 1, sizeof(vif_empty), dma_file);
+    dma_entries[mp - 1]++;
     for (int i = 0; i < bone_count; i++) {
         dma_entry->vif_len = 4;
         dma_entry->res1 = 0x3000;
