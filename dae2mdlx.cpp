@@ -377,6 +377,49 @@ int main(int argc, char *argv[]) {
         printf("error loading model!: %s", importer.GetErrorString());
         return -1;
     }
+    // we are listing node hierarchy per bone here, hoping i can get some sort
+    // of parser in place
+    for (unsigned int i = 0; i < scene->mNumMeshes; i++) {
+        aiMesh *mesh = scene->mMeshes[i];
+
+        const char *bone_hierarchy[mesh->mNumBones];
+        int bone_parent[mesh->mNumBones];
+        for (unsigned int z = 0; z < mesh->mNumBones; z++) {
+            bone_hierarchy[z] = "";
+        }
+        for (unsigned int z = 0; z < mesh->mNumBones; z++) {
+            bone_parent[z] = -1;
+        }
+
+        for (unsigned int j = 0; j < mesh->mNumBones; j++) {
+            aiBone *bone = mesh->mBones[j];
+
+            bone_hierarchy[j] = bone->mName.C_Str();
+        }
+
+        for (unsigned int j = 0; j < mesh->mNumBones; j++) {
+
+            aiBone *bone = mesh->mBones[j];
+            aiNode *currentNode = scene->mRootNode->FindNode(bone->mName);
+            while (currentNode != scene->mRootNode) {
+                for (unsigned int z = 0; z < mesh->mNumBones; z++) {
+                    if (z == j) {
+                        break;
+                    }
+                    if (strcmp(bone_hierarchy[z], currentNode->mName.C_Str()) ==
+                        0) {
+                        printf("PARENT FOUND: %d\n", z);
+                        bone_parent[j] = z;
+                        z = mesh->mNumBones;
+                        break;
+                    }
+                }
+                currentNode = currentNode->mParent;
+            }
+            printf("Bone id: %d  name: %s, parent: %d\n", j, bone_hierarchy[j],
+                   bone_parent[j]);
+        }
+    }
 
     /*Assimp::Exporter exporter;
     const aiExportFormatDesc *format = exporter.GetExportFormatDescription(0);
@@ -579,7 +622,8 @@ int main(int argc, char *argv[]) {
         // TODO: verify what those unknowns are!
         // we do not have any offset yet so we just blank out everything
         subhead->unk1 = 0;
-        subhead->texture_idx = y;
+        // subhead->texture_idx = y;
+        subhead->texture_idx = 0;
         subhead->unk2 = 0;
         subhead->unk3 = 0;
         subhead->DMA_off = 0;
