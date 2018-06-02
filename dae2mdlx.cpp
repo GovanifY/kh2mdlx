@@ -483,7 +483,7 @@ int main(int argc, char *argv[]) {
             // packet < the maximum size
             if (((((ceil((bone_count + 3) / 4) + (4 * (bone_count + 3))) +
                    (vert_count + 3) + ((face_count + 1) * 3)) +
-                  4) < 255)) {
+                  4) < 130)) {
                 // we update faces
                 faces_drawn[face_count] = y;
                 face_count++;
