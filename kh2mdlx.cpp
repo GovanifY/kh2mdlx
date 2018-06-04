@@ -363,7 +363,10 @@ int main(int argc, char *argv[]) {
     FILE *mdl;
     char empty[] = { 0x00 };
 
-    mdl = fopen("test.kh2m", "wb");
+    std::string kh2mname =
+        std::string(argv[1]).substr(0, std::string(argv[1]).find_last_of('.')) +
+        ".kh2m";
+    mdl = fopen(kh2mname.c_str(), "wb");
 
     Assimp::Importer importer;
     importer.SetPropertyInteger(
