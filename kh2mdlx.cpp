@@ -99,7 +99,7 @@
  * 0x04 is the model. It contains a model header, followed by a model part per
  * texture, each including their list of bones, subpart to render by the VU1,
  * DMA tags to refer to the subparts and matrices. For more informations refer
- * to obj2kh2v.
+ * to kh2vif.
  *
  * 0x07 is the texture container: it contains several textures under the TIM2
  * format. For more information refer to the tool building it.
@@ -281,7 +281,7 @@ void write_packet(int vert_count, int bone_count, int face_count,
 
     fclose(pkt);
 
-    sprintf(makepkt, "obj2kh2v \"%s\"", filename);
+    sprintf(makepkt, "kh2vif \"%s\"", filename);
     system(makepkt);
 
     // scanf("%d\n");
@@ -354,9 +354,9 @@ void write_packet(int vert_count, int bone_count, int face_count,
     // remove(kh2vname);
 }
 int main(int argc, char *argv[]) {
-    printf("dae2mdlx\n--- Early rev, don't blame me if it eats your cat\n\n");
+    printf("kh2mdlx\n--- Early rev, don't blame me if it eats your cat\n\n");
     if (argc < 2) {
-        printf("usage: dae2mdlx model.dae\n");
+        printf("usage: kh2mdlx model.dae\n");
         return -1;
     }
 
