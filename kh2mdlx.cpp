@@ -300,6 +300,8 @@ void write_packet(int vert_count, int bone_count, int face_count,
     fseek(kh2v, 0x0, SEEK_END);
     dma_entry->vif_len = ftell(kh2v) / 16;
     dma_entry->res1 = 0x3000;
+
+    fclose(kh2v);
     // TOFIX: we don't know yet where in the final file our packet will
     // end up so we blank it out for now.
     dma_entry->vif_off = 0;
