@@ -1,2 +1,2 @@
-# dae2mdlx
-This tool is a complete model importer for the game kh2.
+# kh2mdlx 
+This tool is a model importer and exporter for the game kh2.
